@@ -1,0 +1,16 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+- name: "Initialize Cassandra cluster"
+  hosts: "{{ cluster }}"
+  gather_facts: true
+
+  vars_files:
+    - group_vars/common.yml
+
+  roles:
+    - common
+    - jolokia
+    - cassandra_configs
+    - cassandra
+    # - telegraf

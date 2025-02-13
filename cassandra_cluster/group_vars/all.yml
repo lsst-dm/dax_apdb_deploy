@@ -1,0 +1,26 @@
+---
+# `deploy_folder` needs to be specified on per-cluster basis.
+deploy_folder: ""
+deploy_docker_folder: "{{ deploy_folder }}/docker"
+
+# Docker image and version (tag) to use.
+cassandra_image_name: cassandra
+cassandra_version: 4.1.7
+
+# If `use_monitoring` is set to false then telegraf configuration will be
+# skipped and jolokia will not be used.
+use_monitoring: true
+# Jolokia for monitoring JMX via REST: https://github.com/jolokia/jolokia
+# version 1.7 should be used for now, 2.x was not tested.
+jolokia_version: 1.7.2
+
+# Location on controller node used to cache various files.
+local_cache: "./.cache"
+
+# Directory for data on remote host, it must be created before cluster is
+# deployed, and its ownership needs to be set to UID=999. Individual clusters
+# would usually override this location.
+data_dir: /data
+
+# Set to true for clusters that need Cassandra password authentication.
+use_password: false

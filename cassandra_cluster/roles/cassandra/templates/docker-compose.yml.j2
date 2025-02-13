@@ -1,0 +1,49 @@
+# {{ ansible_managed }}
+
+services:
+
+  cassandra:
+
+    image: {{ cassandra_image_name }}:{{ cassandra_version }}
+
+    network_mode: "host"
+    restart: "on-failure:7"
+
+    volumes:
+      - type: bind
+        source: {{ data_dir }}
+        target: /var/lib/cassandra
+      - type: bind
+        source: "{{ deploy_docker_folder }}/cassandra-{{ cassandra_version }}.yaml"
+        target: /etc/cassandra/cassandra-{{ cassandra_version }}.yaml
+#      - type: bind
+#        source: {{ deploy_docker_folder }}/jvm-server-{{ cassandra_version }}.options
+#        target: /etc/cassandra/jvm-server.options
+#        read_only: true
+#      - type: bind
+#        source: {{ deploy_docker_folder }}/jvm11-server-{{ cassandra_version }}.options
+#        target: /etc/cassandra/jvm11-server.options
+#        read_only: true
+      {% if use_monitoring -%}
+      - type: bind
+        source: {{ jolokia_jar }}
+        target: /opt/cassandra/lib/jolokia-jvm.jar
+        read_only: true
+      {%- endif %}
+
+    environment:
+      JVM_OPTS: "-Dcassandra.config=/etc/cassandra/cassandra-{{ cassandra_version }}.yaml"
+      {% if use_monitoring -%}
+      JVM_EXTRA_OPTS: "-javaagent:/opt/cassandra/lib/jolokia-jvm.jar=port=8778,host=localhost"
+      {%- endif %}
+
+    # Casandra logs a lot
+    logging:
+      driver: json-file
+      options:
+        max-size: "1g"
+        max-file: 10
+
+    # run as regular user to avoid ownership changes by entrypoint, but
+    # `data_dir` and files in it (if any) have to be owned by uid 999 already.
+    user: cassandra

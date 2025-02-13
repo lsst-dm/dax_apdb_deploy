@@ -1,0 +1,23 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/common
+
+- name: "Print deploy_folder"
+  debug:
+    msg: "{{ deploy_folder }}"
+
+- name: "Create folder used by deployment tools"
+  ansible.builtin.file:
+    path: "{{ deploy_folder }}"
+    state: "directory"
+
+- name: "Create folder used by docker tools"
+  ansible.builtin.file:
+    path: "{{ deploy_docker_folder }}"
+    state: "directory"
+
+- name: "Create local cache folder"
+  local_action:
+    module: ansible.builtin.file
+    path: "{{ local_cache }}"
+    state: "directory"

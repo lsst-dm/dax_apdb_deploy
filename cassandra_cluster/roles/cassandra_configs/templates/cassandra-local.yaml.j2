@@ -1,0 +1,57 @@
+#
+# Overrides for default values in cassandra.yaml
+#
+
+cluster_name: "{{ cluster_name | default('APDB_TEST') }}"
+
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "{{ seed_hosts }}"
+
+authenticator: {{ "PasswordAuthenticator" if use_password else "AllowAllAuthenticator" }}
+authorizer: {{ "CassandraAuthorizer" if use_password else "AllowAllAuthorizer" }}
+
+disk_failure_policy: best_effort
+
+commitlog_sync: batch
+commitlog_sync_period: 10000ms
+
+concurrent_reads: 64
+concurrent_writes: 256
+
+file_cache_size: 2048MiB
+buffer_pool_use_heap_if_exhausted: true
+
+memtable_heap_space: 4096MiB
+memtable_flush_writers: 8
+
+concurrent_compactors: 8
+compaction_throughput: 0MiB/s
+
+read_request_timeout: 120s
+range_request_timeout: 120s
+write_request_timeout: 120s
+request_timeout: 120s
+
+internode_application_send_queue_capacity: 400MiB
+internode_application_send_queue_reserve_endpoint_capacity: 2047MiB
+internode_application_send_queue_reserve_global_capacity: 2047MiB
+internode_application_receive_queue_capacity: 400MiB
+internode_application_receive_queue_reserve_endpoint_capacity: 2047MiB
+internode_application_receive_queue_reserve_global_capacity: 2047MiB
+
+tombstone_warn_threshold: 10000000
+tombstone_failure_threshold: 100000000
+
+batch_size_warn_threshold: 10MiB
+batch_size_fail_threshold: 100MiB
+
+# Disables warnings/failures due to the large number of tables.
+keyspaces_warn_threshold: -1
+keyspaces_fail_threshold: -1
+tables_warn_threshold: -1
+tables_fail_threshold: -1
+
+# Secret undocumented parameter.
+disk_access_mode: mmap_index_only

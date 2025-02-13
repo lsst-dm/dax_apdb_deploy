@@ -1,0 +1,6 @@
+---
+seed_hosts: "sdfk8sk001.sdf.slac.stanford.edu,sdfk8sk002.sdf.slac.stanford.edu"
+cluster_name: "APDB development cluster"
+deploy_folder: "/sdf/home/s/{{ lookup('ansible.builtin.env', 'USER') }}/apdb_deploy"
+data_dir: "/zfspool/cassandra"
+use_password: true

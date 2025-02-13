@@ -1,0 +1,10 @@
+#SPDX-License-Identifier: MIT-0
+---
+# vars file for roles/cassandra_configs
+
+cassandra_tar: "{{ local_cache }}/cassandra-{{ cassandra_version }}.tar.gz"
+cassandra_tar_url: "https://github.com/apache/cassandra/archive/refs/tags/cassandra-{{ cassandra_version }}.tar.gz"
+conf_in_tar: "cassandra-cassandra-{{ cassandra_version }}/conf"
+cassandra_yaml: "cassandra-{{ cassandra_version }}.yaml"
+jvm_server_options: "jvm-server-{{ cassandra_version }}.options"
+jvm11_server_options: "jvm11-server-{{ cassandra_version }}.options"

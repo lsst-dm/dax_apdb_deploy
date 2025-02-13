@@ -1,0 +1,31 @@
+---
+
+apdb_dev:
+  hosts:
+    sdfk8sk001:
+      ansible_host: sdfk8sk001.sdf.slac.stanford.edu
+    sdfk8sk002:
+      ansible_host: sdfk8sk002.sdf.slac.stanford.edu
+    sdfk8sk003:
+      ansible_host: sdfk8sk003.sdf.slac.stanford.edu
+    sdfk8sk004:
+      ansible_host: sdfk8sk004.sdf.slac.stanford.edu
+    sdfk8sk005:
+      ansible_host: sdfk8sk005.sdf.slac.stanford.edu
+    sdfk8sk006:
+      ansible_host: sdfk8sk006.sdf.slac.stanford.edu
+
+apdb_test:
+  hosts:
+    sdfk8sk007:
+      ansible_host: sdfk8sk007.sdf.slac.stanford.edu
+    sdfk8sk008:
+      ansible_host: sdfk8sk008.sdf.slac.stanford.edu
+    sdfk8sk009:
+      ansible_host: sdfk8sk009.sdf.slac.stanford.edu
+    sdfk8sk010:
+      ansible_host: sdfk8sk010.sdf.slac.stanford.edu
+    sdfk8sk011:
+      ansible_host: sdfk8sk011.sdf.slac.stanford.edu
+    sdfk8sk012:
+      ansible_host: sdfk8sk012.sdf.slac.stanford.edu

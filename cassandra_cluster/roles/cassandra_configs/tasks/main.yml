@@ -1,0 +1,39 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/cassandra_configs
+
+- name: "Check cached copy of Cassandra config"
+  local_action:
+    module: ansible.builtin.stat
+    path: "{{ local_cache }}/{{ cassandra_yaml }}-orig"
+  register: cassandra_yaml_cache
+
+- name: "Download cassandra configs to local cache"
+  local_action:
+    module: ansible.builtin.shell
+    cmd: |
+      wget -O {{ cassandra_tar }} {{ cassandra_tar_url }};
+      tar -z --extract --to-stdout --file {{ cassandra_tar }} {{ conf_in_tar }}/cassandra.yaml > {{ local_cache }}/{{ cassandra_yaml }}-orig;
+      tar -z --extract --to-stdout --file {{ cassandra_tar }} {{ conf_in_tar }}/jvm-server.options > {{ local_cache }}/{{ jvm_server_options }}-orig;
+      tar -z --extract --to-stdout --file {{ cassandra_tar }} {{ conf_in_tar }}/jvm11-server.options > {{ local_cache }}/{{ jvm11_server_options }}-orig;
+  when: not cassandra_yaml_cache.stat.exists
+
+- name: "Process cassandra.yaml overrides"
+  local_action:
+    module: "ansible.builtin.template"
+    src: "cassandra-local.yaml.j2"
+    dest: "{{ local_cache }}/cassandra-local.yaml"
+
+- name: "Load cassandra.yaml files"
+  ansible.builtin.set_fact:
+    c8_yaml_orig: "{{ lookup('file', '{{ local_cache }}/{{ cassandra_yaml }}-orig') | from_yaml }}"
+    c8_yaml_local: "{{ lookup('file', '{{ local_cache }}/cassandra-local.yaml') | from_yaml }}"
+
+- name: "Merge cassandra.yaml files"
+  ansible.builtin.set_fact:
+    c8_yaml: "{{ c8_yaml_orig | combine(c8_yaml_local) }}"
+
+- name: "Save cassandra.yaml"
+  ansible.builtin.copy:
+    dest: "{{ deploy_docker_folder }}/{{ cassandra_yaml }}"
+    content: "{{ c8_yaml | to_nice_yaml(indent=2) }}"
