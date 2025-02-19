@@ -4,20 +4,6 @@
 
 - block:
 
-  - name: "Check cached copy of Jolokia agent"
-    local_action:
-      module: ansible.builtin.stat
-      path: "{{ local_cache }}/{{ jolokia_jar }}"
-    register: jolokia_jar_cache
-
-  - name: "Download Jolokia agent JAR to local filesystem"
-    local_action:
-      module: ansible.builtin.shell
-      cmd: |
-        wget -O - {{ jolokia_tar }} |
-        tar -z --extract --to-stdout --file - {{ jolokia_agent_in_tar }} > {{ local_cache }}/{{ jolokia_jar }}
-    when: not jolokia_jar_cache.stat.exists
-
   - name: "Copy Jolokia agent JAR to cluster"
     ansible.builtin.copy:
       src: "{{ local_cache }}/{{ jolokia_jar }}"

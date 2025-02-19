@@ -1,0 +1,6 @@
+---
+seed_hosts: "sdfk8sk007.sdf.slac.stanford.edu,sdfk8sk008.sdf.slac.stanford.edu"
+cluster_name: "APDB test cluster"
+deploy_folder: "/sdf/home/s/{{ lookup('ansible.builtin.env', 'USER') }}/apdb_deploy"
+data_dir: "/zfspool/cassandra"
+use_password: true

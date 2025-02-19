@@ -15,7 +15,7 @@ use_monitoring: true
 jolokia_version: 1.7.2
 
 # Location on controller node used to cache various files.
-local_cache: "./.cache"
+local_cache: "{{ playbook_dir }}/.cache"
 
 # Directory for data on remote host, it must be created before cluster is
 # deployed, and its ownership needs to be set to UID=999. Individual clusters

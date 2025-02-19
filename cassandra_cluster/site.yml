@@ -1,16 +1,24 @@
 # Playbook for installing and initializing Cassandra cluster
 ---
 
-- name: "Initialize Cassandra cluster"
-  hosts: "{{ cluster }}"
-  gather_facts: true
-
+- name: "Generate files on local host"
+  hosts: "localhost"
+  gather_facts: false
   vars_files:
-    - group_vars/common.yml
-
+    # Need to read variables for a particular cluster.
+    - "group_vars/{{ cluster }}.yml"
   roles:
-    - common
-    - jolokia
+    - jolokia_download
     - cassandra_configs
-    - cassandra
-    # - telegraf
+
+# - name: "Copy files to remote nodes"
+#   hosts: "{{ cluster }}"
+#   gather_facts: false
+#   vars_files:
+#     - "group_vars/{{ cluster }}.yml"
+
+#   roles:
+#     - remote_folders
+#     - jolokia
+#     - cassandra
+#     # - telegraf

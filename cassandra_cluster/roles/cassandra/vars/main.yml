@@ -2,6 +2,4 @@
 ---
 # vars file for roles/cassandra
 
-jolokia_tar: "https://github.com/jolokia/jolokia/releases/download/v{{ jolokia_version }}/jolokia-{{ jolokia_version }}-bin.tar.gz"
-jolokia_agent_in_tar: "jolokia-{{ jolokia_version }}/agents/jolokia-jvm.jar"
 jolokia_jar: "jolokia-jvm-{{ jolokia_version }}.jar"

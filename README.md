@@ -30,3 +30,25 @@ Ansible playbooks that operate on clusters require `cluster` variable to be set 
 
 The `inventory.yml` is the default inventory, as specified in `ansible.yml`.
 There may be additional inventories, e.g. for testing purposes, they can be specified using `-i inventory-file` option of ansible commands.
+
+Some ansible variables will be specific to a cluster.
+Defaults for this variables are set in the file `cassandra_cluster/group_vars/all.yml`.
+Cluster-specific overrides for these variables appear in the file `cassandra_cluster/group_vars/<cluster_name>.yml`.
+
+
+Deployment model
+================
+
+Deployment of Cassandra on a cluster of hosts includes:
+
+- Generation of configuration files for Cassandra and Docker based on variables (in `group_vars/all.yml` and their overrides).
+  - These config files are generated on a local host in a `cassandra_cluster/.cache/` folder.
+  - Configs are extracted from Cassandra distribution and then patched with necessary overrides.
+- If monitoring is enabled (`use_monitoring` variable), then JAR file for Jolokia is downloaded to local host (same `.cache/` folder).
+- On each cluster host:
+  - Directories are created at a location specified by `deploy_folder` variable.
+  - Configuration files are copied from `.cache/` to that location, or some subdirectory.
+- If monitoring is enabled:
+  - Jolokia JAR file is also copied to each host.
+  - Telegraf config file and filter script are copied to `/etc/telegraf/telegraf.d/` directory, this requires `sudo`.
+
