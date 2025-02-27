@@ -5,7 +5,10 @@ deploy_docker_folder: "{{ deploy_folder }}/docker"
 
 # Docker image and version (tag) to use.
 cassandra_image_name: cassandra
-cassandra_version: 4.1.7
+cassandra_version: 4.1.4
+
+# Service name for docker-compose
+service_name: cassandra
 
 # If `use_monitoring` is set to false then telegraf configuration will be
 # skipped and jolokia will not be used.

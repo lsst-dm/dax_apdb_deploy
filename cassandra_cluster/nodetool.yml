@@ -1,0 +1,21 @@
+# Playbook for executing nodetool commands on a cluster.
+---
+
+- name: "Run nodetool commands"
+  hosts: "{{ cluster }}"
+  gather_facts: false
+
+  tasks:
+    - name: "Execute nodetool command"
+      community.docker.docker_compose_v2_run:
+        command: "nodetool {{ cmd }}"
+        service: "{{ service_name }}"
+        project_src: "{{ deploy_docker_folder }}"
+        tty: false
+        cleanup: true
+      register: nodetool_output
+      changed_when: nodetool_output.rc != 0
+
+    - name: "Dump nodetool output"
+      debug:
+        var: nodetool_output.stdout_lines

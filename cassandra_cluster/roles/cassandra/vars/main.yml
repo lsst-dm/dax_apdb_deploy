@@ -1,5 +1,0 @@
-#SPDX-License-Identifier: MIT-0
----
-# vars file for roles/cassandra
-
-jolokia_jar: "jolokia-jvm-{{ jolokia_version }}.jar"

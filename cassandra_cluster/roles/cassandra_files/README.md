@@ -1,7 +1,7 @@
 Role Name
 =========
 
-A brief description of the role goes here.
+Role that copies files that are needed for Cassandra deployment to remote hosts.
 
 Requirements
 ------------

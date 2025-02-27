@@ -1,0 +1,44 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/cassandra_files
+
+- name: "Copy docker-compose.yml to cluster"
+  ansible.builtin.template:
+    src: "docker-compose.yml.j2"
+    dest: "{{ deploy_docker_folder }}/docker-compose.yml"
+
+- block:
+
+  - name: "Copy Jolokia agent JAR to cluster"
+    ansible.builtin.copy:
+      src: "{{ local_cache }}/{{ jolokia_jar }}"
+      dest: "{{ deploy_docker_folder }}/{{ jolokia_jar }}"
+
+  when: use_monitoring
+
+- name: "Copy jvm-server.options files"
+  ansible.builtin.copy:
+    src: "{{ local_cache }}/{{cluster}}/{{ item }}"
+    dest: "{{ deploy_docker_folder }}/{{ item }}"
+  loop: ["{{ jvm_server_options }}", "{{ jvm11_server_options }}"]
+
+- name: "Copy cassandra-yaml file"
+  ansible.builtin.copy:
+    src: "{{ local_cache }}/{{ cluster }}/{{ cassandra_yaml }}"
+    dest: "{{ deploy_docker_folder }}/{{ cassandra_yaml }}"
+
+- name: "Copy entrypoint file"
+  ansible.builtin.copy:
+    src: "entrypoint-wrapper.sh"
+    dest: "{{ deploy_docker_folder }}/entrypoint-wrapper.sh"
+    mode: "755"
+
+- name: "Copy nodetool-wrapper.sh to cluster"
+  ansible.builtin.template:
+    src: "nodetool-wrapper.sh.j2"
+    dest: "{{ deploy_docker_folder }}/nodetool"
+    mode: "755"
+
+- name: "Pull docker images"
+  community.docker.docker_compose_v2_pull:
+    project_src: "{{ deploy_docker_folder }}"

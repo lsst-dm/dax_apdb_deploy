@@ -11,14 +11,11 @@
     - jolokia_download
     - cassandra_configs
 
-# - name: "Copy files to remote nodes"
-#   hosts: "{{ cluster }}"
-#   gather_facts: false
-#   vars_files:
-#     - "group_vars/{{ cluster }}.yml"
+- name: "Copy files to remote nodes"
+  hosts: "{{ cluster }}"
+  gather_facts: false
 
-#   roles:
-#     - remote_folders
-#     - jolokia
-#     - cassandra
-#     # - telegraf
+  roles:
+    - remote_folders
+    - cassandra_files
+    # - telegraf

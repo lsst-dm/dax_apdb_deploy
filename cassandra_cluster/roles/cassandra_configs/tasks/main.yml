@@ -28,17 +28,17 @@
 
 - name: "Load cassandra.yaml files"
   ansible.builtin.set_fact:
-    c8_yaml_orig: "{{ lookup('file', '{{ local_cache }}/{{ cassandra_yaml }}.orig') | from_yaml }}"
-    c8_yaml_local: "{{ lookup('file', '{{ local_cache }}/cassandra-local.yaml') | from_yaml }}"
+    c8_yaml_orig: "{{ lookup('file', '{{ local_cache }}/{{ cassandra_yaml }}.orig') }}"
+    c8_yaml_local: "{{ lookup('file', '{{ local_cache }}/cassandra-local.yaml') }}"
 
 - name: "Merge cassandra.yaml files"
   ansible.builtin.set_fact:
-    c8_yaml: "{{ c8_yaml_orig | combine(c8_yaml_local) }}"
+    c8_yaml: "{{ c8_yaml_orig | merge_yaml_strings(c8_yaml_local) }}"
 
 - name: "Save cassandra.yaml to local cache"
   ansible.builtin.copy:
     dest: "{{ local_cache }}/{{ cluster }}/{{ cassandra_yaml }}"
-    content: "{{ c8_yaml | to_nice_yaml(indent=2) }}"
+    content: "{{ c8_yaml }}"
 
 - name: "Copy jvm-server.options file"
   ansible.builtin.copy:
