@@ -6,3 +6,8 @@ cassandra_yaml: "cassandra-{{ cassandra_version }}.yaml"
 jolokia_jar: "jolokia-jvm-{{ jolokia_version }}.jar"
 jvm_server_options: "jvm-server-{{ cassandra_version }}.options"
 jvm11_server_options: "jvm11-server-{{ cassandra_version }}.options"
+seed_hosts: >-
+  {%- for h in ansible_play_hosts_all if hostvars[h].cassandra_seed | default(false) -%}
+    {{- "," if not loop.first -}}
+    {{ hostvars[h].ansible_host }}
+  {%- endfor -%}

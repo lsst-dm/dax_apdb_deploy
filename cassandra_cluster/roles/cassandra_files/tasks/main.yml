@@ -6,26 +6,29 @@
   ansible.builtin.template:
     src: "docker-compose.yml.j2"
     dest: "{{ deploy_docker_folder }}/docker-compose.yml"
+    mode: "644"
 
-- block:
-
-  - name: "Copy Jolokia agent JAR to cluster"
-    ansible.builtin.copy:
-      src: "{{ local_cache }}/{{ jolokia_jar }}"
-      dest: "{{ deploy_docker_folder }}/{{ jolokia_jar }}"
-
+- name: "Optionally copy Jolokia agent JAR to cluster"
   when: use_monitoring
+  block:
+    - name: "Copy Jolokia agent JAR to cluster"
+      ansible.builtin.copy:
+        src: "{{ local_cache }}/{{ jolokia_jar }}"
+        dest: "{{ deploy_docker_folder }}/{{ jolokia_jar }}"
+        mode: "644"
 
 - name: "Copy jvm-server.options files"
   ansible.builtin.copy:
-    src: "{{ local_cache }}/{{cluster}}/{{ item }}"
+    src: "{{ local_cache }}/{{ cluster }}/{{ item }}"
     dest: "{{ deploy_docker_folder }}/{{ item }}"
+    mode: "644"
   loop: ["{{ jvm_server_options }}", "{{ jvm11_server_options }}"]
 
 - name: "Copy cassandra-yaml file"
   ansible.builtin.copy:
     src: "{{ local_cache }}/{{ cluster }}/{{ cassandra_yaml }}"
     dest: "{{ deploy_docker_folder }}/{{ cassandra_yaml }}"
+    mode: "644"
 
 - name: "Copy entrypoint file"
   ansible.builtin.copy:
@@ -33,10 +36,16 @@
     dest: "{{ deploy_docker_folder }}/entrypoint-wrapper.sh"
     mode: "755"
 
-- name: "Copy nodetool-wrapper.sh to cluster"
+- name: "Copy nodetool wrapper to cluster"
   ansible.builtin.template:
     src: "nodetool-wrapper.sh.j2"
     dest: "{{ deploy_docker_folder }}/nodetool"
+    mode: "755"
+
+- name: "Copy cqlsh wrapper to cluster"
+  ansible.builtin.template:
+    src: "cqlsh-wrapper.sh.j2"
+    dest: "{{ deploy_docker_folder }}/cqlsh"
     mode: "755"
 
 - name: "Pull docker images"

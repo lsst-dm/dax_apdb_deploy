@@ -1,0 +1,11 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+- name: "Setup cassandra accounts"
+  serial: 1
+  hosts: "{{ cluster  }}[0]"
+  gather_facts: false
+
+  roles:
+    - cassandra_accounts
+

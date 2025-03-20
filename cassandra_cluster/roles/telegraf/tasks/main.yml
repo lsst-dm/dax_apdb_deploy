@@ -8,20 +8,20 @@
   register: etc_telegraf
 
 - block:
-  - name: "Install telegraf config for cassandra"
-    ansible.builtin.template:
-      src: "./90-cassandra.conf.j2"
-      dest: "/etc/telegraf/telegraf.d/90-cassandra.conf"
-      mode: "0644"
+
   - name: "Install telegraf filter script"
     ansible.builtin.copy:
       src: "files/cassandra-metrics-rename.py"
       dest: "/etc/telegraf/telegraf.d/cassandra-metrics-rename.py"
       mode: "0644"
-  - name: "Restart telegraf service"
-    ansible.builtin.service:
-      name: "telegraf"
-      state: "restarted"
+      notify: "Restart telegraf"
+
+  - name: "Install telegraf config for cassandra"
+    ansible.builtin.template:
+      src: "./90-cassandra.conf.j2"
+      dest: "/etc/telegraf/telegraf.d/90-cassandra.conf"
+      mode: "0644"
+      notify: "Restart telegraf"
 
   become: true
   become_method: "ansible.builtin.sudo"

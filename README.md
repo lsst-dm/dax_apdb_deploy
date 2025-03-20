@@ -52,3 +52,22 @@ Deployment of Cassandra on a cluster of hosts includes:
   - Jolokia JAR file is also copied to each host.
   - Telegraf config file and filter script are copied to `/etc/telegraf/telegraf.d/` directory, this requires `sudo`.
 
+
+Bootstrapping the cluster
+-------------------------
+
+Very first start of the multi-node cluster needs special care:
+
+- It is recommended to bring up seed nodes first, sequentially, one-by-one.
+- Once all seed nodes are up, all other nodes can be started.
+- If authentication is enabled (should be true for any reasonable setup):
+  - Using default initial credentials (`cassandra`/`cassandra`) create new super-user account.
+  - Using new super-user accout delete default `cassandra` account.
+  - Create additional non-super-user accounts, typically allowing them to create keyspaces.
+
+Non-trivial part here is how to realize that bootstrap is needed.
+Potentially we can always start cluster in the same order - first seed nodes sequentially, then all the rest.
+One can check the existence of `cassandra` account to decide whether we need to create other accounts.
+
+To serialize startup of the seed nodes we need to know when the node is actually up before starting another one.
+The easiest way to do that is to probe native client port `9042` and wait until it responds (with a reasonable timeout).

@@ -1,0 +1,17 @@
+
+- name: "Start Cassandra seed node"
+  debug:
+    msg: "Start seed node on {{ ansible_host }}"
+
+# Wait until Cassandra responds on native port.
+- name: "Wait for Cassandra seed node"
+  ansible.builtin.shell:
+    cmd: |
+      count=120;
+      while ! nc -z localhost 9042; do
+        count=$(expr $count - 1);
+        test $count -eq 0 && exit 1;
+        sleep 1;
+      done
+  register: wait_tresult
+  changed_when: wait_tresult.rc != 0

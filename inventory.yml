@@ -4,8 +4,10 @@ apdb_dev:
   hosts:
     sdfk8sk001:
       ansible_host: sdfk8sk001.sdf.slac.stanford.edu
+      cassandra_seed: true
     sdfk8sk002:
       ansible_host: sdfk8sk002.sdf.slac.stanford.edu
+      cassandra_seed: true
     sdfk8sk003:
       ansible_host: sdfk8sk003.sdf.slac.stanford.edu
     sdfk8sk004:
@@ -19,8 +21,10 @@ apdb_test:
   hosts:
     sdfk8sk007:
       ansible_host: sdfk8sk007.sdf.slac.stanford.edu
+      cassandra_seed: true
     sdfk8sk008:
       ansible_host: sdfk8sk008.sdf.slac.stanford.edu
+      cassandra_seed: true
     sdfk8sk009:
       ansible_host: sdfk8sk009.sdf.slac.stanford.edu
     sdfk8sk010:

@@ -27,3 +27,17 @@ data_dir: /data
 
 # Set to true for clusters that need Cassandra password authentication.
 use_password: false
+
+# Specifies where credentials for new Cassandra accounts come from:
+#   - "hashi_vault" to get credentails from HashiCorp Vault.
+#     Using HashiCorp Vault requires $VAULT_ADDR and "vault login".
+credentials_source:
+
+# Path for regular user credentials in HashiCorp Vault.
+hashi_vault_user_path: "rubin/usdf-apdb-dev/apdb-prod"
+
+# Path for superuser credentials in HashiCorp Vault.
+hashi_vault_super_path: "rubin/usdf-apdb-dev/apdb-prod"
+
+# Maunt point for HashiCorp Vault.
+hashi_vault_mount_point: "secret"
