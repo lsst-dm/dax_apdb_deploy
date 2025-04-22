@@ -2,23 +2,36 @@
 ---
 # tasks file for roles/jolokia
 
-- block:
-
-  - name: "Create local cache folder"
-    ansible.builtin.file:
-      path: "{{ local_cache }}"
-      state: "directory"
-
-  - name: "Check cached copy of Jolokia agent"
-    ansible.builtin.stat:
-      path: "{{ local_cache }}/{{ jolokia_jar }}"
-    register: jolokia_jar_cache
-
-  - name: "Download Jolokia agent JAR to local filesystem"
-    ansible.builtin.shell:
-      cmd: |
-        wget -O - {{ jolokia_tar }} |
-        tar -z --extract --to-stdout --file - {{ jolokia_agent_in_tar }} > {{ local_cache }}/{{ jolokia_jar }}
-    when: not jolokia_jar_cache.stat.exists
-
+- name: "Download Jolokia to cache folder"
   when: use_monitoring
+  delegate_to: localhost
+  block:
+    - name: "Create local cache folder"
+      ansible.builtin.file:
+        path: "{{ local_cache }}"
+        state: "directory"
+        mode: "755"
+
+    - name: "Check cached copy of Jolokia agent"
+      ansible.builtin.stat:
+        path: "{{ local_cache }}/{{ jolokia_download_jar }}"
+      register: jolokia_jar_cache
+
+    - name: "Download Jolokia tarball to local cache"
+      ansible.builtin.get_url:
+        url: "{{ jolokia_download_url }}"
+        dest: "{{ local_cache }}/{{ jolokia_download_tar }}"
+        mode: "644"
+
+    - name: "Extract Jolokia agent JAR to local filesystem"
+      ansible.builtin.unarchive:
+        src: "{{ local_cache }}/{{ jolokia_download_tar }}"
+        include: ["{{ jolokia_download_agent_path }}"]
+        dest: "{{ local_cache }}"
+
+    - name: "Copy JAR to top cache level"
+      ansible.builtin.copy:
+        src: "{{ local_cache }}/{{ jolokia_download_agent_path }}"
+        dest: "{{ local_cache }}/{{ jolokia_download_jar }}"
+        mode: "644"
+

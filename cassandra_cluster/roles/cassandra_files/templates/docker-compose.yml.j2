@@ -27,13 +27,13 @@ services:
         read_only: true
       {% if use_monitoring -%}
       - type: bind
-        source: "{{ deploy_docker_folder }}/{{ jolokia_jar }}"
+        source: "{{ deploy_docker_folder }}/{{ cassandra_files_jolokia_jar }}"
         target: /opt/cassandra/lib/jolokia-jvm.jar
         read_only: true
       {%- endif %}
 
     environment:
-      CASSANDRA_SEEDS: "{{ seed_hosts }}"
+      CASSANDRA_SEEDS: "{{ cluster_seed_hosts_names }}"
       CASSANDRA_CLUSTER_NAME: "{{ cluster_name | default('APDB_TEST') }}"
       {% if use_monitoring -%}
       JVM_EXTRA_OPTS: "-javaagent:/opt/cassandra/lib/jolokia-jvm.jar=port=8778,host=localhost"

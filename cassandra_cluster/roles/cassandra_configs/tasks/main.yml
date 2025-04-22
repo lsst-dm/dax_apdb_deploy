@@ -1,57 +1,71 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for roles/cassandra_configs
 
-- name: "Create local cache folder"
-  ansible.builtin.file:
-    path: "{{ local_cache }}/{{ cluster }}"
-    state: "directory"
+- name: "Generate config files for cassandra"
+  delegate_to: localhost
+  block:
 
-- name: "Check cached copy of Cassandra config"
-  ansible.builtin.stat:
-    path: "{{ local_cache }}/{{ cassandra_yaml }}.orig"
-  register: cassandra_yaml_cache
+    - name: "Create local cache folder"
+      ansible.builtin.file:
+        path: "{{ group_local_cache }}"
+        state: "directory"
+        mode: "755"
 
-- name: "Download cassandra configs to local cache"
-  ansible.builtin.shell:
-    cmd: |
-      wget -O {{ cassandra_tar }} {{ cassandra_tar_url }};
-      tar -z --extract --to-stdout --file {{ cassandra_tar }} {{ conf_in_tar }}/cassandra.yaml > {{ local_cache }}/{{ cassandra_yaml }}.orig;
-      tar -z --extract --to-stdout --file {{ cassandra_tar }} {{ conf_in_tar }}/jvm-server.options > {{ local_cache }}/{{ jvm_server_options }}.orig;
-      tar -z --extract --to-stdout --file {{ cassandra_tar }} {{ conf_in_tar }}/jvm11-server.options > {{ local_cache }}/{{ jvm11_server_options }}.orig;
-  when: not cassandra_yaml_cache.stat.exists
+    - name: "Check cached copy of Cassandra config"
+      ansible.builtin.stat:
+        path: "{{ cassandra_configs_unpacked_conf }}/cassandra.yaml"
+      register: cassandra_yaml_cache
 
-- name: "Process cassandra.yaml overrides"
-  ansible.builtin.template:
-    src: "cassandra-local.yaml.j2"
-    dest: "{{ local_cache }}/cassandra-local.yaml"
+    - name: "Get cassandra configs"
+      when: not cassandra_yaml_cache.stat.exists
+      block:
 
-- name: "Load cassandra.yaml files"
-  ansible.builtin.set_fact:
-    c8_yaml_orig: "{{ lookup('file', '{{ local_cache }}/{{ cassandra_yaml }}.orig') }}"
-    c8_yaml_local: "{{ lookup('file', '{{ local_cache }}/cassandra-local.yaml') }}"
+        - name: "Download cassandra tarball to local cache"
+          ansible.builtin.get_url:
+            url: "{{ cassandra_configs_download_url }}"
+            dest: "{{ local_cache }}/{{ cassandra_configs_tar }}"
+            mode: "644"
 
-- name: "Merge cassandra.yaml files"
-  ansible.builtin.set_fact:
-    c8_yaml: "{{ c8_yaml_orig | merge_yaml_strings(c8_yaml_local) }}"
+        - name: "Extract configs from cassandra tar"
+          ansible.builtin.unarchive:
+            src: "{{ local_cache }}/{{ cassandra_configs_tar }}"
+            include:
+              - "{{ cassandra_configs_conf_in_tar }}/cassandra.yaml"
+              - "{{ cassandra_configs_conf_in_tar }}/jvm-server.options"
+              - "{{ cassandra_configs_conf_in_tar }}/jvm11-server.options"
+            dest: "{{ local_cache }}"
 
-- name: "Save cassandra.yaml to local cache"
-  ansible.builtin.copy:
-    dest: "{{ local_cache }}/{{ cluster }}/{{ cassandra_yaml }}"
-    content: "{{ c8_yaml }}"
+    - name: "Process cassandra.yaml overrides"
+      ansible.builtin.template:
+        src: "cassandra-local.yaml.j2"
+        dest: "{{ group_local_cache }}/cassandra-local.yaml"
+        mode: "644"
 
-- name: "Copy jvm-server.options file"
-  ansible.builtin.copy:
-    src: "{{ local_cache }}/{{ item }}.orig"
-    dest: "{{ local_cache }}/{{ cluster }}/{{ item }}"
-  loop: ["{{ jvm_server_options }}", "{{ jvm11_server_options }}"]
+    - name: "Load cassandra.yaml files"
+      ansible.builtin.set_fact:
+        c8_yaml_orig: "{{ lookup('file', '{{ cassandra_configs_unpacked_conf }}/cassandra.yaml') }}"
+        c8_yaml_local: "{{ lookup('file', '{{ group_local_cache }}/cassandra-local.yaml') }}"
 
-- name: "Patch jvm-server.options file"
-  ansible.posix.patch:
-    src: "jvm-server.options.patch"
-    dest: "{{ local_cache }}/{{ cluster }}/{{ jvm_server_options }}"
+    - name: "Merge cassandra.yaml files"
+      ansible.builtin.set_fact:
+        c8_yaml: "{{ c8_yaml_orig | merge_yaml_strings(c8_yaml_local) }}"
 
-- name: "Patch jvm11-server.options file"
-  ansible.posix.patch:
-    src: "jvm11-server.options.patch"
-    dest: "{{ local_cache }}/{{ cluster }}/{{ jvm11_server_options }}"
+    - name: "Save cassandra.yaml to local cache"
+      ansible.builtin.copy:
+        content: "{{ c8_yaml }}"
+        dest: "{{ group_local_cache }}/cassandra-{{ cassandra_version }}.yaml"
+        mode: "644"
+
+    - name: "Copy jvm-server.options files"
+      ansible.builtin.copy:
+        src: "{{ cassandra_configs_unpacked_conf }}/{{ item }}.options"
+        dest: "{{ group_local_cache }}/{{ item }}-{{ cassandra_version }}.options"
+        mode: "644"
+      loop: ["jvm-server", "jvm11-server"]
+
+    - name: "Patch jvm-server.options files"
+      ansible.posix.patch:
+        src: "{{ item }}.options.patch"
+        dest: "{{ group_local_cache }}/{{ item }}-{{ cassandra_version }}.options"
+      loop: ["jvm-server", "jvm11-server"]

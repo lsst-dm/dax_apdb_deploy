@@ -8,45 +8,39 @@
     dest: "{{ deploy_docker_folder }}/docker-compose.yml"
     mode: "644"
 
-- name: "Optionally copy Jolokia agent JAR to cluster"
-  when: use_monitoring
-  block:
-    - name: "Copy Jolokia agent JAR to cluster"
-      ansible.builtin.copy:
-        src: "{{ local_cache }}/{{ jolokia_jar }}"
-        dest: "{{ deploy_docker_folder }}/{{ jolokia_jar }}"
-        mode: "644"
-
-- name: "Copy jvm-server.options files"
-  ansible.builtin.copy:
-    src: "{{ local_cache }}/{{ cluster }}/{{ item }}"
-    dest: "{{ deploy_docker_folder }}/{{ item }}"
-    mode: "644"
-  loop: ["{{ jvm_server_options }}", "{{ jvm11_server_options }}"]
-
-- name: "Copy cassandra-yaml file"
-  ansible.builtin.copy:
-    src: "{{ local_cache }}/{{ cluster }}/{{ cassandra_yaml }}"
-    dest: "{{ deploy_docker_folder }}/{{ cassandra_yaml }}"
-    mode: "644"
-
 - name: "Copy entrypoint file"
   ansible.builtin.copy:
     src: "entrypoint-wrapper.sh"
     dest: "{{ deploy_docker_folder }}/entrypoint-wrapper.sh"
     mode: "755"
 
-- name: "Copy nodetool wrapper to cluster"
-  ansible.builtin.template:
-    src: "nodetool-wrapper.sh.j2"
-    dest: "{{ deploy_docker_folder }}/nodetool"
-    mode: "755"
+- name: "Optionally copy Jolokia agent JAR to cluster"
+  when: use_monitoring
+  block:
+    - name: "Copy Jolokia agent JAR to cluster"
+      ansible.builtin.copy:
+        src: "{{ local_cache }}/{{ cassandra_files_jolokia_jar }}"
+        dest: "{{ deploy_docker_folder }}/"
+        mode: "644"
 
-- name: "Copy cqlsh wrapper to cluster"
+- name: "Copy cassandra config files"
+  ansible.builtin.copy:
+    src: "{{ group_local_cache }}/{{ item }}"
+    dest: "{{ deploy_docker_folder }}/"
+    mode: "644"
+  loop:
+    - "{{ cassandra_files_jvm_server_options }}"
+    - "{{ cassandra_files_jvm11_server_options }}"
+    - "{{ cassandra_files_cassandra_yaml }}"
+
+- name: "Copy cqlsh and nodetool wrapper to cluster"
   ansible.builtin.template:
-    src: "cqlsh-wrapper.sh.j2"
-    dest: "{{ deploy_docker_folder }}/cqlsh"
+    src: "{{ item }}-wrapper.sh.j2"
+    dest: "{{ deploy_docker_folder }}/{{ item }}"
     mode: "755"
+  loop:
+    - "cqlsh"
+    - "nodetool"
 
 - name: "Pull docker images"
   community.docker.docker_compose_v2_pull:

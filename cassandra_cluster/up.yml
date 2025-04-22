@@ -2,8 +2,8 @@
 ---
 
 - name: "Bring up seed hosts"
+  hosts: "{{ ansible_play_hosts }}"
   serial: 1
-  hosts: "{{ cluster  }}"
   gather_facts: false
 
   tasks:
@@ -13,7 +13,7 @@
       when: hostvars[inventory_hostname].cassandra_seed | default(false)
 
 - name: "Bring up non-seed hosts"
-  hosts: "{{ cluster  }}"
+  hosts: "{{ ansible_play_hosts }}"
   gather_facts: false
 
   tasks:

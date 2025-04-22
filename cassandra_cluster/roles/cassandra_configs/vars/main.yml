@@ -2,9 +2,14 @@
 ---
 # vars file for roles/cassandra_configs
 
-cassandra_tar: "{{ local_cache }}/cassandra-{{ cassandra_version }}.tar.gz"
-cassandra_tar_url: "https://github.com/apache/cassandra/archive/refs/tags/cassandra-{{ cassandra_version }}.tar.gz"
-conf_in_tar: "cassandra-cassandra-{{ cassandra_version }}/conf"
-cassandra_yaml: "cassandra-{{ cassandra_version }}.yaml"
-jvm_server_options: "jvm-server-{{ cassandra_version }}.options"
-jvm11_server_options: "jvm11-server-{{ cassandra_version }}.options"
+# Name of the tar file.
+cassandra_configs_tar: "cassandra-{{ cassandra_version }}.tar.gz"
+
+# Where to get it from.
+cassandra_configs_download_url: "https://github.com/apache/cassandra/archive/refs/tags/{{ cassandra_configs_tar }}"
+
+# Location of the conf directory in tar file.
+cassandra_configs_conf_in_tar: "cassandra-cassandra-{{ cassandra_version }}/conf"
+
+# Wehre it will be unpacked.
+cassandra_configs_unpacked_conf: "{{ local_cache }}/{{ cassandra_configs_conf_in_tar }}"
