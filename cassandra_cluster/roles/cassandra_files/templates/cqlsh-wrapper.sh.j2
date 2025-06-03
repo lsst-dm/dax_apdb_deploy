@@ -8,7 +8,7 @@ service="{{ service_name }}"
 
 cd "$docker_dir"
 
-Check that container is running
+# Check that container is running
 container_id=$(docker compose ps --status=running -q $service)
 if [ -z "$container_id" ]; then
     echo "Service $service is not running"

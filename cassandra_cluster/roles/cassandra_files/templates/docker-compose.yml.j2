@@ -25,6 +25,9 @@ services:
         source: "{{ deploy_docker_folder }}/jvm11-server-{{ cassandra_version }}.options"
         target: /etc/cassandra/jvm11-server.options
         read_only: true
+      - type: bind
+        source: {{ logs_dir }}
+        target: /var/log/cassandra
       {% if use_monitoring -%}
       - type: bind
         source: "{{ deploy_docker_folder }}/{{ cassandra_files_jolokia_jar }}"

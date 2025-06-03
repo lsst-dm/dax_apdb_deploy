@@ -14,14 +14,14 @@
       src: "files/cassandra-metrics-rename.py"
       dest: "/etc/telegraf/telegraf.d/cassandra-metrics-rename.py"
       mode: "0644"
-      notify: "Restart telegraf"
+    notify: "Restart telegraf"
 
   - name: "Install telegraf config for cassandra"
     ansible.builtin.template:
-      src: "./90-cassandra.conf.j2"
+      src: "90-cassandra.conf.j2"
       dest: "/etc/telegraf/telegraf.d/90-cassandra.conf"
       mode: "0644"
-      notify: "Restart telegraf"
+    notify: "Restart telegraf"
 
   become: true
   become_method: "ansible.builtin.sudo"

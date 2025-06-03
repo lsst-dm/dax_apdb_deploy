@@ -46,5 +46,8 @@ keyspaces_fail_threshold: -1
 tables_warn_threshold: -1
 tables_fail_threshold: -1
 
+# Increase logging threshold from 500ms to 5s
+slow_query_log_timeout: 5s
+
 # Secret undocumented parameter, it may be missing in orginal, "!" will add it
 "!disk_access_mode": mmap_index_only

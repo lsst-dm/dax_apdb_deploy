@@ -2,16 +2,14 @@
 ---
 
 - name: "Run nodetool commands"
+  hosts: "{{ ansible_play_hosts }}"
   gather_facts: false
 
   tasks:
     - name: "Execute nodetool command"
-      community.docker.docker_compose_v2_run:
-        command: "nodetool {{ cmd }}"
-        service: "{{ service_name }}"
-        project_src: "{{ deploy_docker_folder }}"
-        tty: false
-        cleanup: true
+      ansible.builtin.command:
+        cmd: "./nodetool {{ cmd }}"
+        chdir: "{{ deploy_docker_folder }}"
       register: nodetool_output
       changed_when: nodetool_output.rc != 0
 

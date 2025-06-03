@@ -18,4 +18,3 @@
   roles:
     - remote_folders
     - cassandra_files
-    # - telegraf

@@ -5,7 +5,7 @@ deploy_docker_folder: "{{ deploy_folder }}/docker"
 
 # Docker image and version (tag) to use.
 cassandra_image_name: cassandra
-cassandra_version: 4.1.4
+cassandra_version: 4.1.9
 
 # Service name for docker-compose
 service_name: cassandra
@@ -25,6 +25,11 @@ group_local_cache: '{{ playbook_dir }}/.cache/{{ cluster_group_name | default("_
 # deployed, and its ownership needs to be set to UID=999. Individual clusters
 # would usually override this location.
 data_dir: /data
+
+# Directory for cassandra logs on remote host, it must be created before
+# cluster is deployed, and its ownership needs to be set to UID=999. Individual
+# clusters would usually override this location.
+logs_dir: /var/log/cassandra
 
 # Set to true for clusters that need Cassandra password authentication.
 use_password: false
@@ -49,3 +54,6 @@ cluster_seed_hosts_names: >-
     {{- "," if not loop.first -}}
     {{ hostvars[h].ansible_host }}
   {%- endfor -%}
+
+# UID of the cassandra user in Docker container.
+cassandra_user_uid: "999"
