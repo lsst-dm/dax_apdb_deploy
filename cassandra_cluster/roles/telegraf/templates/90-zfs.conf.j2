@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+# Copied from https://github.com/influxdata/telegraf/blob/master/plugins/inputs/zfs/README.md
+[[inputs.zfs]]
+  ## ZFS kstat path. Ignored on FreeBSD
+  ## If not specified, then default is:
+  # kstatPath = "/proc/spl/kstat/zfs"
+
+  ## By default, telegraf gather all zfs stats
+  ## Override the stats list using the kstatMetrics array:
+  ## For FreeBSD, the default is:
+  # kstatMetrics = ["arcstats", "zfetchstats", "vdev_cache_stats"]
+  ## For Linux, the default is:
+  # kstatMetrics = ["abdstats", "arcstats", "dnodestats", "dbufcachestats",
+  #     "dmu_tx", "fm", "vdev_mirror_stats", "zfetchstats", "zil"]
+  kstatMetrics = []
+
+  ## By default, don't gather zpool stats
+  poolMetrics = true
+
+# Linux zfs plugin does not report health, run special script for that.
+[[inputs.exec]]
+  commands = ["/usr/bin/python3 /etc/telegraf/telegraf.d/zpool-health.py zfspool"]
+  data_format = "influx"

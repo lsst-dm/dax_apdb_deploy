@@ -16,10 +16,24 @@
       mode: "0644"
     notify: "Restart telegraf"
 
+  - name: "Install zpool health script"
+    ansible.builtin.copy:
+      src: "files/zpool-health.py"
+      dest: "/etc/telegraf/telegraf.d/zpool-health.py"
+      mode: "0644"
+    notify: "Restart telegraf"
+
   - name: "Install telegraf config for cassandra"
     ansible.builtin.template:
       src: "90-cassandra.conf.j2"
       dest: "/etc/telegraf/telegraf.d/90-cassandra.conf"
+      mode: "0644"
+    notify: "Restart telegraf"
+
+  - name: "Install telegraf config for zfs"
+    ansible.builtin.template:
+      src: "90-zfs.conf.j2"
+      dest: "/etc/telegraf/telegraf.d/90-zfs.conf"
       mode: "0644"
     notify: "Restart telegraf"
 
