@@ -48,8 +48,12 @@ keyspaces_fail_threshold: -1
 tables_warn_threshold: -1
 tables_fail_threshold: -1
 
-# Increase logging threshold from 500ms to 5s
-slow_query_log_timeout: 5s
+# Increase logging threshold for slow queries from 500ms to 60s.
+slow_query_log_timeout: 60s
 
-# Secret undocumented parameter, it may be missing in orginal, "!" will add it
+# Secret undocumented parameter, it may be missing in orginal, "!" will add it.
 "!disk_access_mode": mmap_index_only
+
+# Secret undocumented parameter, it may be missing in orginal, "!" will add it.
+# This needs to be at least as high as other request tmeouts.
+"!native_transport_timeout": 120s
