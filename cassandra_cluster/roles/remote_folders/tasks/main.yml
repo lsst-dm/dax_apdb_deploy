@@ -1,0 +1,13 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/remote_folders
+
+- name: "Create folder used by deployment tools"
+  ansible.builtin.file:
+    path: "{{ deploy_folder }}"
+    state: "directory"
+
+- name: "Create folder used by docker tools"
+  ansible.builtin.file:
+    path: "{{ deploy_docker_folder }}"
+    state: "directory"

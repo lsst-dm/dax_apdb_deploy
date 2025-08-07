@@ -1,0 +1,15 @@
+#SPDX-License-Identifier: MIT-0
+---
+# vars file for roles/cassandra_configs
+
+# Name of the tar file.
+cassandra_configs_tar: "cassandra-{{ cassandra_version }}.tar.gz"
+
+# Where to get it from.
+cassandra_configs_download_url: "https://github.com/apache/cassandra/archive/refs/tags/{{ cassandra_configs_tar }}"
+
+# Location of the conf directory in tar file.
+cassandra_configs_conf_in_tar: "cassandra-cassandra-{{ cassandra_version }}/conf"
+
+# Wehre it will be unpacked.
+cassandra_configs_unpacked_conf: "{{ local_cache }}/{{ cassandra_configs_conf_in_tar }}"

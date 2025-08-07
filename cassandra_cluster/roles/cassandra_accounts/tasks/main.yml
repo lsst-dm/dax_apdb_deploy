@@ -1,0 +1,67 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/cassandra_accounts
+
+# Need to distinguish between failures due to docker of failing authentication.
+- name: "Check that service is running and can execute cqlsh"
+  community.docker.docker_compose_v2_exec:
+    service: "{{ service_name }}"
+    command: "cqlsh -v"
+    project_src: "{{ deploy_docker_folder }}"
+    tty: false
+  register: result
+  changed_when: result.rc != 0
+
+# Check if default cassandra/cassandra credentials are still working.
+- name: "Check for default login"
+  community.cassandra.cassandra_cqlsh:
+    cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
+    execute: "SHOW HOST"
+    username: cassandra
+    password: cassandra
+  register: cqlsh_using_default_login
+  ignore_errors: true
+
+- name: "Create new Cassandra account"
+  when: cqlsh_using_default_login.failed
+  block:
+
+    - name: "Ask Vault for new cassandra account credentials"
+      when: credentials_source == "hashi_vault"
+      block:
+        # Get some secrets from the Vault, runs on localhost, so use lookup
+        # plugin instead of module.
+        - name: "Ask Vault for superuser cassandra account credentials"
+          ansible.builtin.set_fact:
+            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', '{{ hashi_vault_super_path }}', mount_point='{{ hashi_vault_mount_point }}') }}"
+
+        - name: "Extract credentials"
+          ansible.builtin.set_fact:
+            super_account_username: "{{ hashi_response.data.data.username }}"
+            super_account_password: "{{ hashi_response.data.data.password }}"
+
+        - name: "Ask Vault for new cassandra account credentials"
+          ansible.builtin.set_fact:
+            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', '{{ hashi_vault_user_path }}', mount_point='{{ hashi_vault_mount_point }}') }}"
+
+        - name: "Extract credentials"
+          ansible.builtin.set_fact:
+            user_account_username: "{{ hashi_response.data.data.username }}"
+            user_account_password: "{{ hashi_response.data.data.password }}"
+
+    - debug:
+        msg: "{{ user_account_username }} / super = {{ super_account_username }}"
+
+    - name: "Create new superuser account"
+      community.docker.docker_compose_v2_exec:
+        service: "{{ service_name }}"
+        command: >
+          echo cqlsh -u cassandra -p cassandra -e
+          \"CREATE ROLE {{ super_account_username }} WITH PASSWORD = '{{ super_account_password }}' AND LOGIN = true AND SUPERUSER = true;\"
+        project_src: "{{ deploy_docker_folder }}"
+        tty: false
+      register: cqlsh_result
+      failed_when: cqlsh_result.rc != 0
+
+    - debug:
+        msg: "{{ cqlsh_result }}"

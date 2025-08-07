@@ -1,0 +1,20 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+# We could execute this play only on the first node, but if there are multiple
+# groups involved then we'd have to execute it on a first node in a group.
+- name: "Generate files on local host"
+  hosts: "{{ ansible_play_hosts[0] }}"
+  serial: 1
+  gather_facts: false
+  roles:
+    - jolokia_download
+    - cassandra_configs
+
+- name: "Copy files to remote nodes"
+  hosts: all
+  gather_facts: false
+
+  roles:
+    - remote_folders
+    - cassandra_files

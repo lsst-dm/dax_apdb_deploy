@@ -1,0 +1,22 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+- name: "Bring up seed hosts"
+  hosts: "{{ ansible_play_hosts }}"
+  serial: 1
+  gather_facts: false
+
+  tasks:
+
+    - name: "Bring up seed hosts"
+      ansible.builtin.import_tasks: up_tasks/up-seed.yml
+      when: hostvars[inventory_hostname].cassandra_seed | default(false)
+
+- name: "Bring up non-seed hosts"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: false
+
+  tasks:
+    - name: "Bring up non-seed hosts"
+      ansible.builtin.import_tasks: up_tasks/up-node.yml
+      when: not (hostvars[inventory_hostname].cassandra_seed | default(false))

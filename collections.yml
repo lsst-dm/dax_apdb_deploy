@@ -1,0 +1,6 @@
+---
+collections:
+  - "ansible.posix"
+  - "community.docker"
+  - "community.cassandra"
+  - "community.hashi_vault"

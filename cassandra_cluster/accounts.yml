@@ -1,0 +1,11 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+# Runs on the first host in a list
+- name: "Setup cassandra accounts"
+  serial: 1
+  hosts: "{{ ansible_play_hosts }}[0]"
+  gather_facts: false
+
+  roles:
+    - cassandra_accounts

@@ -1,0 +1,5 @@
+_venv/
+.ansible/
+.cache/
+__pycache__/
+.vscode/

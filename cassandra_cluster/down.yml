@@ -1,0 +1,36 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+- name: "Drain and shutdown all Cassandra nodes"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: false
+
+  tasks:
+
+    - name: "Drain cassandra node"
+      ansible.builtin.command:
+        cmd: "./nodetool drain"
+        chdir: "{{ deploy_docker_folder }}"
+
+    - name: "Stop compaction"
+      ansible.builtin.command:
+        cmd: "./nodetool stop"
+        chdir: "{{ deploy_docker_folder }}"
+
+    - name: "Stop daemon"
+      ansible.builtin.command:
+        cmd: "./nodetool stopdaemon"
+        chdir: "{{ deploy_docker_folder }}"
+
+- name: "Stop container"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: false
+
+  tasks:
+
+    - name: "Stop container"
+      community.docker.docker_compose_v2:
+        state: absent
+        project_src: "{{ deploy_docker_folder }}"
+        wait: true
+        wait_timeout: 60

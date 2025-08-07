@@ -1,0 +1,14 @@
+--- jvm-server.options.orig	2024-09-18 04:56:33.000000000 -0700
++++ jvm-server.options	2025-02-18 14:59:34.926281262 -0800
+@@ -179,8 +179,9 @@
+ # the same value to avoid stop-the-world GC pauses during resize, and
+ # so that we can lock the heap in memory on startup to prevent any
+ # of it from being swapped out.
+-#-Xms4G
+-#-Xmx4G
++-Xms64G
++-Xmx64G
++-XX:-UseCompressedOops
+ 
+ # Young generation size is automatically calculated by cassandra-env
+ # based on this formula: min(100 * num_cores, 1/4 * heap size)

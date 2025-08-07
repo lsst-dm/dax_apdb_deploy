@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+# Run cqlsh executable inside the running container.
+#
+
+docker_dir="{{ deploy_docker_folder }}"
+service="{{ service_name }}"
+
+cd "$docker_dir"
+
+# Check that container is running
+container_id=$(docker compose ps --status=running -q $service)
+if [ -z "$container_id" ]; then
+    echo "Service $service is not running"
+    exit 1
+fi
+
+exec docker compose exec $service cqlsh "$@"

@@ -1,0 +1,47 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/cassandra_files
+
+- name: "Copy docker-compose.yml to cluster"
+  ansible.builtin.template:
+    src: "docker-compose.yml.j2"
+    dest: "{{ deploy_docker_folder }}/docker-compose.yml"
+    mode: "644"
+
+- name: "Copy entrypoint file"
+  ansible.builtin.copy:
+    src: "entrypoint-wrapper.sh"
+    dest: "{{ deploy_docker_folder }}/entrypoint-wrapper.sh"
+    mode: "755"
+
+- name: "Optionally copy Jolokia agent JAR to cluster"
+  when: use_monitoring
+  block:
+    - name: "Copy Jolokia agent JAR to cluster"
+      ansible.builtin.copy:
+        src: "{{ local_cache }}/{{ cassandra_files_jolokia_jar }}"
+        dest: "{{ deploy_docker_folder }}/"
+        mode: "644"
+
+- name: "Copy cassandra config files"
+  ansible.builtin.copy:
+    src: "{{ group_local_cache }}/{{ item }}"
+    dest: "{{ deploy_docker_folder }}/"
+    mode: "644"
+  loop:
+    - "{{ cassandra_files_jvm_server_options }}"
+    - "{{ cassandra_files_jvm11_server_options }}"
+    - "{{ cassandra_files_cassandra_yaml }}"
+
+- name: "Copy cqlsh and nodetool wrapper to cluster"
+  ansible.builtin.template:
+    src: "{{ item }}-wrapper.sh.j2"
+    dest: "{{ deploy_docker_folder }}/{{ item }}"
+    mode: "755"
+  loop:
+    - "cqlsh"
+    - "nodetool"
+
+- name: "Pull docker images"
+  community.docker.docker_compose_v2_pull:
+    project_src: "{{ deploy_docker_folder }}"

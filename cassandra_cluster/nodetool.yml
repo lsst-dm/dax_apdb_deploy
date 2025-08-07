@@ -1,0 +1,18 @@
+# Playbook for executing nodetool commands on a cluster.
+---
+
+- name: "Run nodetool commands"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: false
+
+  tasks:
+    - name: "Execute nodetool command"
+      ansible.builtin.command:
+        cmd: "./nodetool {{ cmd }}"
+        chdir: "{{ deploy_docker_folder }}"
+      register: nodetool_output
+      changed_when: nodetool_output.rc != 0
+
+    - name: "Dump nodetool output"
+      debug:
+        var: nodetool_output.stdout_lines

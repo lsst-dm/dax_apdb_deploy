@@ -1,0 +1,63 @@
+# Playbook for one-time initialization of remote nodes.
+---
+
+- name: "Create all directories needed for deployment"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: true
+  become: true
+
+  tasks:
+
+    - name: "Create data directory"
+      ansible.builtin.file:
+        path: "{{ data_dir }}"
+        state: directory
+        owner: "{{ cassandra_user_uid }}"
+        group: "{{ cassandra_user_uid }}"
+        mode: "0755"
+
+    - name: "Create logs directory"
+      ansible.builtin.file:
+        path: "{{ logs_dir }}"
+        state: directory
+        owner: "{{ cassandra_user_uid }}"
+        group: "{{ cassandra_user_uid }}"
+        mode: "0755"
+
+    # Copied from community.cassandra.cassandra_linux role.
+    - name: "Ensure max_map_count is 1048575"
+      sysctl:
+        name: vm.max_map_count
+        value: "1048575"
+        sysctl_set: yes
+        reload: yes
+
+    # Copied from community.cassandra.cassandra_linux role.
+    - name: "Extra Limit for RH Derived Distros"
+      lineinfile:
+        path: /etc/security/limits.d/90-nproc.conf
+        regexp: "^\\* - nproc 32768"
+        line: "* - nproc 32768"
+        create: yes
+      when: ansible_os_family == "RedHat"
+
+    # Copied from community.cassandra.cassandra_linux role.
+    - name: "Ensure limits are set"
+      blockinfile:
+        path: /etc/security/limits.conf
+        block: |
+          {{ cassandra_user_uid }} - memlock unlimited
+          {{ cassandra_user_uid }} - nofile 100000
+          {{ cassandra_user_uid }} - nproc 32768
+          {{ cassandra_user_uid }} - as unlimited
+        marker: "#<!-- {mark} ANSIBLE MANAGED BLOCK -->"
+        state: present
+
+- name: "Configure telegraf"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: true
+  become: true
+
+  roles:
+
+    - telegraf

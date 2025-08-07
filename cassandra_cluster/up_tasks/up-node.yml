@@ -1,0 +1,20 @@
+
+- name: "Start Cassandra node"
+  community.docker.docker_compose_v2:
+    state: present
+    project_src: "{{ deploy_docker_folder }}"
+    wait: true
+    wait_timeout: 15
+
+# Wait until Cassandra responds on native port.
+- name: "Wait for Cassandra node"
+  ansible.builtin.shell:
+    cmd: |
+      count=120;
+      while ! nc -z localhost 9042; do
+        count=$(expr $count - 1);
+        test $count -eq 0 && exit 1;
+        sleep 1;
+      done
+  register: wait_result
+  changed_when: wait_result.rc != 0
