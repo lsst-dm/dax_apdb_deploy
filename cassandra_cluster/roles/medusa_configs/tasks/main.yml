@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/medusa_configs
+
+- name: "Generate config files for cassandra-medusa"
+  block:
+
+    - name: "Ask Vault for AWKS secrets"
+      delegate_to: localhost
+      when: credentials_source == "hashi_vault"
+      block:
+        # Get some secrets from the Vault, runs on localhost, so use lookup
+        # plugin instead of module.
+        - name: "Ask Vault for AWS credentials"
+          ansible.builtin.set_fact:
+            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', '{{ backup_hashi_vault_aws_path }}', mount_point='{{ hashi_vault_mount_point }}') }}"
+
+        - name: "Extract credentials"
+          ansible.builtin.set_fact:
+            medusa_aws_access_key: "{{ hashi_response.data.data.access_key }}"
+            medusa_aws_secret_key: "{{ hashi_response.data.data.secret_key }}"
+
+    - name: "Copy AWS secret to cluster"
+      ansible.builtin.template:
+        src: "medusa-minio-credentials.j2"
+        dest: "{{ deploy_docker_folder }}/medusa-minio-credentials"
+        mode: 0o600
+
+    - name: "Set AWS secret ACL"
+      ansible.posix.acl:
+        path: "{{ deploy_docker_folder }}/medusa-minio-credentials"
+        etype: user
+        entity: "{{ cassandra_user_uid }}"
+        permissions: r
+        state: present
+
+    - name: "Copy medusa config to cluster"
+      ansible.builtin.template:
+        src: "medusa.ini.j2"
+        dest: "{{ deploy_docker_folder }}/medusa.ini"
+        mode: "644"
+
+  when: use_backups

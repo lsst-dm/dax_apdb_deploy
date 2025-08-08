@@ -28,7 +28,7 @@ services:
       - type: bind
         source: {{ logs_dir }}
         target: /var/log/cassandra
-      {% if use_monitoring -%}
+      {% if need_jolokia -%}
       - type: bind
         source: "{{ deploy_docker_folder }}/{{ cassandra_files_jolokia_jar }}"
         target: /opt/cassandra/lib/jolokia-jvm.jar
@@ -38,7 +38,7 @@ services:
     environment:
       CASSANDRA_SEEDS: "{{ cluster_seed_hosts_names }}"
       CASSANDRA_CLUSTER_NAME: "{{ cluster_name | default('APDB_TEST') }}"
-      {% if use_monitoring -%}
+      {% if need_jolokia -%}
       JVM_EXTRA_OPTS: "-javaagent:/opt/cassandra/lib/jolokia-jvm.jar=port=8778,host=localhost"
       {%- endif %}
 
@@ -57,6 +57,49 @@ services:
       - cassandra_yaml
 
     command: ["/entrypoint-wrapper.sh", "cassandra", "-f"]
+
+{% if use_backups %}
+
+  "{{ backup_service_name }}":
+
+    image: {{ medusa_image_name }}:{{ medusa_version }}
+
+    network_mode: "host"
+    restart: "on-failure:7"
+
+    volumes:
+      - type: bind
+        source: {{ data_dir }}
+        target: /var/lib/cassandra
+      - type: bind
+        source: "{{ deploy_docker_folder }}/cassandra-{{ cassandra_version }}.yaml"
+        target: /etc/cassandra/cassandra.yaml
+        read_only: true
+      - type: bind
+        source: "{{ deploy_docker_folder }}/medusa.ini"
+        target: /etc/medusa/medusa.ini
+        read_only: true
+
+    environment:
+      MEDUSA_MODE: GRPC
+
+    secrets:
+      - source: medusa_aws_credentials
+        target: medusa-minio-credentials
+        # docker-compose does not support uid/gid
+        # uid: "999"
+        # gid: "999"
+        # mode: 0o400
+
+{% endif %}
+
+{% if use_backups %}
+
+secrets:
+  medusa_aws_credentials:
+    file: "{{ deploy_docker_folder }}/medusa-minio-credentials"
+
+{% endif %}
 
 configs:
   cassandra_yaml:

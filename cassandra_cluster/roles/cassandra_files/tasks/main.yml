@@ -15,7 +15,7 @@
     mode: "755"
 
 - name: "Optionally copy Jolokia agent JAR to cluster"
-  when: use_monitoring
+  when: need_jolokia
   block:
     - name: "Copy Jolokia agent JAR to cluster"
       ansible.builtin.copy:

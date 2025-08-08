@@ -1,6 +1,6 @@
 ---
 cluster_name: "APDB USDF test"
-cluster_group_name: "apdb_dev"
+cluster_unique_id: "apdb_dev"
 deploy_folder: "/sdf/home/s/{{ lookup('ansible.builtin.env', 'USER') }}/apdb_deploy"
 data_dir: "/zfspool/cassandra/test-apdb-cluster"
 logs_dir: "/zfspool/cassandra/logs"

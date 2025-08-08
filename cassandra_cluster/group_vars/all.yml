@@ -19,7 +19,7 @@ jolokia_version: 1.7.2
 
 # Location on controller node used to cache various files.
 local_cache: "{{ playbook_dir }}/.cache"
-group_local_cache: '{{ playbook_dir }}/.cache/{{ cluster_group_name | default("_any_") }}'
+group_local_cache: '{{ playbook_dir }}/.cache/{{ cluster_unique_id | default("_any_") }}'
 
 # Directory for data on remote host, it must be created before cluster is
 # deployed, and its ownership needs to be set to UID=999. Individual clusters
@@ -55,5 +55,29 @@ cluster_seed_hosts_names: >-
     {{ hostvars[h].ansible_host }}
   {%- endfor -%}
 
-# UID of the cassandra user in Docker container.
+# UID of the cassandra user in Docker containers (both cassandra and medusa).
 cassandra_user_uid: "999"
+
+#
+# Backup-related options.
+#
+
+# Must be set to true to enable support medusa backups.
+use_backups: false
+
+medusa_image_name: k8ssandra/medusa
+medusa_version: 0.25.0
+
+backup_service_name: medusa
+backup_storage_provider: s3_compatible
+backup_bucket_name: usdf-apdb-prod
+backup_aws_key_file: /run/secrets/aws-credentials.ini
+backup_hashi_vault_aws_path: rubin/usdf-apdb-prod/s3
+backup_prefix: medusa_backup_{{ cluster_unique_id }}
+backup_transfer_max_bandwidth: 500MB/s
+backup_concurrent_transfers: 1
+backup_s3_host: s3dfrgw.slac.stanford.edu
+backup_s3_port: 443
+
+# Jolokia is needed for both monitoring and backups.
+need_jolokia: "{{ use_monitoring or use_backups }}"
