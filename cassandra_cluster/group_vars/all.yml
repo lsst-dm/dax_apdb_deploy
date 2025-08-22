@@ -81,3 +81,6 @@ backup_s3_port: 443
 
 # Jolokia is needed for both monitoring and backups.
 need_jolokia: "{{ use_monitoring or use_backups }}"
+
+# name of the Loki docker plugin.
+loki_plugin_name: grafana/loki-docker-driver:3.5.3-amd64

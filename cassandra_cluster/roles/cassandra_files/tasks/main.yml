@@ -50,3 +50,9 @@
 - name: "Pull docker images"
   community.docker.docker_compose_v2_pull:
     project_src: "{{ deploy_docker_folder }}"
+
+- name: "Install loki docker plugin"
+  community.docker.docker_plugin:
+    alias: loki
+    plugin_name: "{{ loki_plugin_name }}"
+    state: enable

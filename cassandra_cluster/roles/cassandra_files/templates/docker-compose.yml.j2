@@ -42,12 +42,27 @@ services:
       JVM_EXTRA_OPTS: "-javaagent:/opt/cassandra/lib/jolokia-jvm.jar=port=8778,host=localhost"
       {%- endif %}
 
-    # Casandra logs a lot
     logging:
-      driver: json-file
+      driver: loki
       options:
-        max-size: "1g"
-        max-file: 10
+        loki-url: http://sdfloki.slac.stanford.edu:80/loki/api/v1/push
+        loki-pipeline-stages: |
+          - multiline:
+              firstline: '^(INFO|WARN|ERROR) .*'
+              max_wait_time: 3s
+          - regex:
+              expression: '^(?P<level>INFO|WARN|ERROR) *\[(?P<task>[^ ]*)\] (?P<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (?P<message>(?s:.*))$'
+          - timestamp:
+              source: time
+              format: "2006-01-02 15:04:05.999"
+              location: "Etc/UTC"
+              action_on_failure: skip
+          - labels:
+              level:
+          - drop:
+              expression: '^INFO .*(SlabPoolCleaner|PerDiskMemtableFlushWriter|CompactionExecutor|NonPeriodicTasks.*Deleting sstable)'
+          - output:
+              source: message
 
     # run as regular user to avoid ownership changes by entrypoint, but
     # `data_dir` and files in it (if any) have to be owned by uid 999 already.
@@ -94,6 +109,29 @@ services:
         # uid: "999"
         # gid: "999"
         # mode: 0o400
+
+    logging:
+      driver: loki
+      options:
+        loki-url: http://sdfloki.slac.stanford.edu:80/loki/api/v1/push
+        loki-pipeline-stages: |
+          - multiline:
+              firstline: '^\[(?P<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\] (?P<level>INFO|WARN|WARNING|ERROR|DEBUG): .*'
+              max_wait_time: 3s
+          - regex:
+              expression: '^\[(?P<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\] (?P<level>INFO|WARN|WARNING|ERROR|DEBUG): (?P<message>(?s:.*))$'
+          - timestamp:
+              source: time
+              format: "2006-01-02 15:04:05.999"
+              location: "Etc/UTC"
+              action_on_failure: skip
+          - labels:
+              level:
+          - drop:
+              source: level
+              value: "DEBUG"
+          - output:
+              source: message
 
 {% endif %}
 
