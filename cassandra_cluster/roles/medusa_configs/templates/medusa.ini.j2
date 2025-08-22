@@ -47,7 +47,7 @@ config_file = /etc/cassandra/cassandra.yaml
 ; Disabling this can help when fqdn resolving gives different domain names for local and remote nodes
 ; which makes backup succeed but Medusa sees them as incomplete.
 ; Defaults to True.
-resolve_ip_addresses = True
+; resolve_ip_addresses = True
 
 ; When true, almost all commands executed by Medusa are prefixed with `sudo`.
 ; Does not affect the use_sudo_for_restore setting in the 'storage' section.
@@ -93,7 +93,7 @@ max_backup_count = 0
 ; Both thresholds can be defined for backup purge.
 
 ; Used to throttle S3 backups/restores:
-transfer_max_bandwidth = "{{ backup_transfer_max_bandwidth }}"
+transfer_max_bandwidth = {{ backup_transfer_max_bandwidth }}
 
 ; Max number of concurrent downloads/uploads.
 concurrent_transfers = {{ backup_concurrent_transfers }}
@@ -161,7 +161,7 @@ secure = True
 ; Controls file logging, disabled by default.
 ; enabled = 0
 ; file = medusa.log
-; level = INFO
+level = DEBUG
 
 ; Control the log output format
 ; format = [%(asctime)s] %(levelname)s: %(message)s
@@ -183,7 +183,7 @@ enabled = True
 [kubernetes]
 ; The following settings are only intended to be configured if Medusa is running in containers, preferably in Kubernetes.
 enabled = True
-cassandra_url = http://127.0.0.1:8778/
+cassandra_url = http://127.0.0.1:8778/jolokia/
 
 ; Enables the use of the management API to create snapshots. Falls back to using Jolokia if not enabled.
 ;use_mgmt_api = True

@@ -5,7 +5,7 @@
 - name: "Generate config files for cassandra-medusa"
   block:
 
-    - name: "Ask Vault for AWKS secrets"
+    - name: "Ask Vault for AWS secrets"
       delegate_to: localhost
       when: credentials_source == "hashi_vault"
       block:
@@ -41,3 +41,29 @@
         mode: "644"
 
   when: use_backups
+
+- name: "Copy cassandra credentials to the host."
+  block:
+
+    - name: "Ask Vault for Cassandra secrets"
+      delegate_to: localhost
+      when: credentials_source == "hashi_vault"
+      block:
+        # Get some secrets from the Vault, runs on localhost, so use lookup
+        # plugin instead of module.
+        - name: "Ask Vault for AWS credentials"
+          ansible.builtin.set_fact:
+            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', '{{ hashi_vault_super_path }}', mount_point='{{ hashi_vault_mount_point }}') }}"
+
+        - name: "Extract credentials"
+          ansible.builtin.set_fact:
+            cassandra_super_username: "{{ hashi_response.data.data.username }}"
+            cassandra_super_password: "{{ hashi_response.data.data.password }}"
+
+    - name: "Copy Cassandra secret to cluster"
+      ansible.builtin.template:
+        src: "medusa-cassandra-credentials.env.j2"
+        dest: "{{ deploy_docker_folder }}/medusa-cassandra-credentials.env"
+        mode: 0o600
+
+  when: use_password

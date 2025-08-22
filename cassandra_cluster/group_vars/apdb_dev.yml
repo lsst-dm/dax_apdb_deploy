@@ -4,8 +4,11 @@ cluster_unique_id: "apdb_dev"
 deploy_folder: "/sdf/home/s/{{ lookup('ansible.builtin.env', 'USER') }}/apdb_deploy"
 data_dir: "/zfspool/cassandra/test-apdb-cluster"
 logs_dir: "/zfspool/cassandra/logs"
+
 use_password: true
 credentials_source: "hashi_vault"
 hashi_vault_user_path: "rubin/usdf-apdb-dev/apdb-prod"
-hashi_vault_super_path: "rubin/usdf-apdb-dev/apdb-prod"
+hashi_vault_super_path: "rubin/usdf-apdb-dev/cassandra-super"
 hashi_vault_mount_point: "secret"
+
+use_backups: true

@@ -71,7 +71,7 @@ medusa_version: 0.25.0
 backup_service_name: medusa
 backup_storage_provider: s3_compatible
 backup_bucket_name: usdf-apdb-prod
-backup_aws_key_file: /run/secrets/aws-credentials.ini
+backup_aws_key_file: /run/secrets/medusa-minio-credentials
 backup_hashi_vault_aws_path: rubin/usdf-apdb-prod/s3
 backup_prefix: medusa_backup_{{ cluster_unique_id }}
 backup_transfer_max_bandwidth: 500MB/s

@@ -82,6 +82,10 @@ services:
 
     environment:
       MEDUSA_MODE: GRPC
+      PYTHONWARNINGS: "ignore:Unverified HTTPS request"
+
+    env_file:
+      - "{{ deploy_docker_folder }}/medusa-cassandra-credentials.env"
 
     secrets:
       - source: medusa_aws_credentials

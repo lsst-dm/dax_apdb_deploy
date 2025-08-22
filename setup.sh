@@ -3,3 +3,6 @@
 
 source ./_venv/bin/activate
 export ANSIBLE_CONFIG=$PWD/ansible.cfg
+
+export PATH=$PWD/bin:$PATH
+export PYTHONPATH=$PWD/python:$PYTHONPATH

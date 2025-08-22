@@ -1,3 +1,7 @@
 ansible
 yamllint
+prettytable
 hvac
+cassandra-medusa
+grpcio
+grpcio-health-checking
