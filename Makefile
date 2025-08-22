@@ -18,7 +18,7 @@ $(VENV_LOCATION) :
 	@echo "\n === Execute '. setup.sh' to activate environment ===\n"
 
 ansible : $(VENV_LOCATION)
-	. $(VENV_LOCATION)/bin/activate; pip install -r requirements.txt
+	. $(VENV_LOCATION)/bin/activate; python3 -m pip install -r requirements.txt
 
 collections : ansible
 	. $(VENV_LOCATION)/bin/activate; ansible-galaxy collection install -r collections.yml

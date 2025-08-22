@@ -17,4 +17,5 @@
 
   roles:
     - remote_folders
+    - medusa_configs
     - cassandra_files

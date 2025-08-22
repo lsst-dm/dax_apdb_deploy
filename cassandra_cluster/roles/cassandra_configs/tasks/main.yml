@@ -51,10 +51,10 @@
       ansible.builtin.set_fact:
         c8_yaml: "{{ c8_yaml_orig | merge_yaml_strings(c8_yaml_local) }}"
 
-    - name: "Save cassandra.yaml to local cache"
+    - name: "Save cassandra.yaml.j2 to local cache"
       ansible.builtin.copy:
         content: "{{ c8_yaml }}"
-        dest: "{{ group_local_cache }}/cassandra-{{ cassandra_version }}.yaml"
+        dest: "{{ group_local_cache }}/cassandra-{{ cassandra_version }}.yaml.j2"
         mode: "644"
 
     - name: "Copy jvm-server.options files"

@@ -15,7 +15,7 @@
     mode: "755"
 
 - name: "Optionally copy Jolokia agent JAR to cluster"
-  when: use_monitoring
+  when: need_jolokia
   block:
     - name: "Copy Jolokia agent JAR to cluster"
       ansible.builtin.copy:
@@ -31,7 +31,12 @@
   loop:
     - "{{ cassandra_files_jvm_server_options }}"
     - "{{ cassandra_files_jvm11_server_options }}"
-    - "{{ cassandra_files_cassandra_yaml }}"
+
+- name: "Copy cassandra config file"
+  ansible.builtin.template:
+    src: "{{ group_local_cache }}/{{ cassandra_files_cassandra_yaml }}.j2"
+    dest: "{{ deploy_docker_folder }}/{{ cassandra_files_cassandra_yaml }}"
+    mode: "644"
 
 - name: "Copy cqlsh and nodetool wrapper to cluster"
   ansible.builtin.template:

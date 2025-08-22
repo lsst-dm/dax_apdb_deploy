@@ -3,7 +3,7 @@
 # tasks file for roles/jolokia
 
 - name: "Download Jolokia to cache folder"
-  when: use_monitoring
+  when: need_jolokia
   delegate_to: localhost
   block:
     - name: "Create local cache folder"
