@@ -1,12 +1,32 @@
+# This file is part of dax_apdb_deploy.
+#
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (http://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from __future__ import annotations
+
 import asyncio
-from datetime import datetime, UTC
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime
 
 from medusa.service.grpc.client import Client
 from medusa.service.grpc.medusa_pb2 import StatusType
 from prettytable import PrettyTable
-
-from ..inventory import Inventory
 
 
 def _status_fmt(status: int) -> str:
@@ -17,11 +37,12 @@ def _status_fmt(status: int) -> str:
 
 
 def _size_fmt(size: int, suffix: str = "B") -> str:
+    fsize = float(size)
     for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
-        if abs(size) < 1024.0:
-            return f"{size:3.1f}{unit}{suffix}"
-        size /= 1024.0
-    return f"{size:.1f}Yi{suffix}"
+        if abs(fsize) < 1024.0:
+            return f"{fsize:3.1f}{unit}{suffix}"
+        fsize /= 1024.0
+    return f"{fsize:.1f}Yi{suffix}"
 
 
 def _time_fmt(time: int) -> str:
@@ -31,33 +52,23 @@ def _time_fmt(time: int) -> str:
         return ""
 
 
-def medusa_make_backup(
-    inventory: object, group: str | None, port: int, name: str | None, full: bool, _async: bool
-) -> None:
-    asyncio.run(
-        _make_backup(inventory=inventory, group=group, port=port, name=name, full=full, _async=_async)
-    )
+def medusa_make_backup(hosts: list[str], port: int, name: str | None, full: bool, _async: bool) -> None:
+    asyncio.run(_make_backup(hosts=hosts, port=port, name=name, full=full, _async=_async))
 
 
-def medusa_show_backups(inventory: object, group: str | None, port: int) -> None:
-    asyncio.run(_show_backups(inventory=inventory, group=group, port=port))
+def medusa_show_backups(hosts: list[str], port: int) -> None:
+    asyncio.run(_show_backups(hosts=hosts, port=port))
 
 
-def medusa_delete_backup(inventory: object, name: str, group: str | None, port: int) -> None:
-    asyncio.run(_delete_backup(inventory=inventory, name=name, group=group, port=port))
+def medusa_delete_backup(hosts: list[str], name: str, port: int) -> None:
+    asyncio.run(_delete_backup(hosts=hosts, name=name, port=port))
 
 
-async def _make_backup(
-    *, inventory: object, group: str | None, port: int, name: str | None, full: bool, _async: bool
-) -> None:
-
+async def _make_backup(*, hosts: list[str], port: int, name: str | None, full: bool, _async: bool) -> None:
     mode = "full" if full else "differential"
     if not name:
         ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         name = f"{ts}-{mode}"
-
-    inv = Inventory(inventory)
-    hosts = inv.get_host_names(group)
 
     backups = {}
     for host in hosts:
@@ -72,11 +83,7 @@ async def _make_backup(
         await backup
 
 
-async def _show_backups(*, inventory: object, group: str | None, port: int) -> None:
-
-    inv = Inventory(inventory)
-    hosts = inv.get_host_names(group)
-
+async def _show_backups(*, hosts: list[str], port: int) -> None:
     contact = f"{hosts[0]}:{port}"
     client = Client(contact)
     backups = await client.get_backups()
@@ -87,17 +94,12 @@ async def _show_backups(*, inventory: object, group: str | None, port: int) -> N
         "Start Time",
         "Finish Time",
         "Nodes",
-        # "Node list",
         "Status",
         "Type",
         "#Objects",
         "Size",
     ]
     for backup in backups:
-        # node_list = [f"{node.host} ({node.datacenter}/{node.rack})" for node in backup.nodes]
-        # if not node_list:
-        #     node_list = [""]
-
         row = [
             backup.backupName,
             _time_fmt(backup.startTime),
@@ -111,21 +113,17 @@ async def _show_backups(*, inventory: object, group: str | None, port: int) -> N
         ]
         table.add_row(row)
 
-        # remaining hosts
-        # for node in node_list[1:]:
-        #     row = [""] * len(table.field_names)
-        #     row[4] = node
-        #     table.add_row(row)
-
     print(table)
 
 
-async def _delete_backup(*, inventory: object, name: str, group: str | None, port: int) -> None:
-
-    inv = Inventory(inventory)
-    hosts = inv.get_host_names(group)
-
+async def _delete_backup(*, hosts: list[str], name: str, port: int) -> None:
     contact = f"{hosts[0]}:{port}"
     client = Client(contact)
+
+    # Have to check backup status first to refresh internal state of the
+    # service, otherwise it may complain that backup is not know.
+    status = await client.get_backup_status(name)
+    if status == StatusType.UNKNOWN:
+        raise ValueError(f"Backup {name} is not known.")
 
     await client.delete_backup(name)
