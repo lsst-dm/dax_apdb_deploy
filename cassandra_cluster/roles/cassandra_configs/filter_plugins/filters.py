@@ -4,7 +4,9 @@ import yaml
 from ansible.errors import AnsibleFilterError
 
 
-class FilterModule(object):
+class FilterModule:
+    """Filter for massaging Cassandra YAML configuration."""
+
     def filters(self):
         return {
             "cleanup_cassandra_yaml": self.cleanup_cassandra_yaml,
@@ -18,8 +20,29 @@ class FilterModule(object):
         return cassandra_yaml_dict
 
     def merge_yaml_strings(self, yaml_str, yaml_str_2):
-        """Update one YAML str with the contents of another."""
+        """Update one YAML string with the contents of another.
 
+        Parameters
+        ----------
+        yaml_str : `str`
+            String containing YAML data to be updated.
+        yaml_str_2 : `str`
+            String containing update instructions.
+
+        Notes
+        -----
+        Updates in ``yaml_str_2`` can be specified in one of this forms:
+
+          - ``key: value`` - to replace the value of the exiting key. The key
+            must be defined in the original YAML, but it can be commented out.
+            Comment mark will be removed and key value will be updated.
+            Only the first instance of the key is updated.
+          - ``key: __comment_out__`` - to comment out the key,
+            "__comment_out__" is a literal string. The key may be commented out
+            already.
+          - ``"!key": value`` - to add key if it does not exist, or update its
+            value.
+        """
         try:
             yaml2 = yaml.safe_load(yaml_str_2)
         except Exception as exc:
@@ -52,9 +75,7 @@ class FilterModule(object):
                 if add_if_missing:
                     updated_lines.append(f"{key}: {value}")
                 else:
-                    raise AnsibleFilterError(
-                        f"Key {key} does not exist in the original YAML"
-                    )
+                    raise AnsibleFilterError(f"Key {key} does not exist in the original YAML")
             lines = updated_lines
 
         return "\n".join(lines)

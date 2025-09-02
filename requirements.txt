@@ -5,3 +5,4 @@ hvac
 cassandra-medusa
 grpcio
 grpcio-health-checking
+parallel-ssh

@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+
+import sys
+
+from lsst.dax.apdb_deploy.cli import ansible_pssh
+
+if __name__ == "__main__":
+    sys.exit(ansible_pssh.main())
