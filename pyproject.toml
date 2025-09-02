@@ -1,0 +1,170 @@
+[build-system]
+requires = ["setuptools", "lsst-versions >= 1.3.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lsst-dax-apdb-deploy"
+requires-python = ">=3.11.0"
+description = "Deployment tools for APDB Cassandra cluster."
+license = {text = "BSD 3-Clause License"}
+readme = "README.md"
+authors = [
+    {name="Rubin Observatory Data Management", email="dm-admin@lists.lsst.org"},
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+keywords = ["lsst"]
+dependencies = [
+    "ansible",
+    "yamllint",
+    "prettytable",
+    "hvac",
+    "cassandra-medusa",
+    "grpcio",
+    "grpcio-health-checking",
+    "parallel-ssh",
+]
+
+dynamic = ["version"]
+[project.urls]
+"Homepage" = "https://github.com/lsst-dm/dax_apdb_deploy"
+
+[project.optional-dependencies]
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.setuptools]
+zip-safe = true
+license-files = ["COPYRIGHT", "LICENSE"]
+
+[tool.setuptools.package-data]
+"lsst.dax.apdb_deploy" = ["py.typed"]
+
+[tool.setuptools.dynamic]
+# version = { attr = "lsst_versions.get_lsst_version" }
+
+[project.scripts]
+
+[tool.black]
+line-length = 110
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 110
+known_first_party = ["lsst"]
+
+[tool.lsst_versions]
+# write_to = "python/lsst/daf/butler/version.py"
+
+[tool.pydocstyle]
+convention = "numpy"
+# Our coding style does not require docstrings for magic methods (D105)
+# Our docstyle documents __init__ at the class level (D107)
+# We allow methods to inherit docstrings and this is not compatible with D102.
+# Docstring at the very first line is not required
+# D200, D205 and D400 all complain if the first sentence of the docstring does
+# not fit on one line. We do not require docstrings in __init__ files (D104).
+add-ignore = ["D107", "D105", "D102", "D100", "D200", "D205", "D400", "D104"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+exclude = [
+    "__init__.py",
+    "lex.py",
+    "yacc.py",
+]
+
+[tool.ruff.lint]
+ignore = [
+    "N802",
+    "N803",
+    "N806",
+    "N812",
+    "N815",
+    "N816",
+    "N999",
+    "D107",
+    "D105",
+    "D102",
+    "D104",
+    "D100",
+    "D200",
+    "D205",
+    "D400",
+    "UP007",  # Allow UNION in type annotation
+]
+select = [
+    "E",  # pycodestyle
+    "F",  # pycodestyle
+    "N",  # pep8-naming
+    "W",  # pycodestyle
+    "D",  # pydocstyle
+    "UP",  # pyupgrade
+    "I",  # isort
+    "RUF022",  # sort __all__
+]
+# Commented out to suppress "unused noqa" in jenkins which has older ruff not
+# generating E721.
+extend-select = [
+    "RUF100", # Warn about unused noqa
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lsst"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 79
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+docstring-code-format = true
+# Formatter does not know about indenting.
+docstring-code-line-length = 69
+
+[tool.numpydoc_validation]
+checks = [
+    "all",  # All except the rules listed below.
+    "SA01",  # See Also section.
+    "SA04",  # We don't use descriptions with See Also.
+    "EX01",  # Example section.
+    "SS06",  # Summary can go into second line.
+    "GL01",  # Summary text can start on same line as """
+    "GL08",  # Do not require docstring.
+    "ES01",  # No extended summary required.
+    "RT01",  # Unfortunately our @property trigger this.
+    "RT02",  # Does not want named return value. DM style says we do.
+    "SS05",  # pydocstyle is better at finding infinitive verb.
+]
+exclude = [
+    "^test_.*",  # Do not test docstrings in test code.
+    '^spatial\..*',  # Do not test doc strings in the spatial.py test code.
+    '^lex\..*',  # Lexer
+    '^parserLex\.',  # Docstrings are not numpydoc
+    '^parserYacc\.',  # Docstrings are not numpydoc
+    '^commands\.',  # Click docstrings, not numpydoc
+    'butler.cli$',  # This is the main click command
+    '^__init__$',
+    '\._[a-zA-Z_]+$',  # Private methods.
+]
