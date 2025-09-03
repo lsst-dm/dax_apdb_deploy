@@ -28,6 +28,7 @@ from ansible import context
 from ansible.cli import CLI
 from ansible.cli.arguments import option_helpers
 from ansible.errors import AnsibleError
+from ansible.template import Templar
 from ansible.utils.display import Display
 from pssh.clients import ParallelSSHClient
 
@@ -47,6 +48,7 @@ class PsshCLI(CLI):
 
         option_helpers.add_inventory_options(self.parser)
         option_helpers.add_vault_options(self.parser)
+        option_helpers.add_basedir_options(self.parser)
 
         self.parser.add_argument(
             "-u",
@@ -54,6 +56,20 @@ class PsshCLI(CLI):
             default=C.DEFAULT_REMOTE_USER,
             dest="remote_user",
             help="connect as this user (default=%(default)s)",
+        )
+        self.parser.add_argument(
+            "-d",
+            "--chdir-to-docker",
+            default=False,
+            action="store_true",
+            help="Change to docker folder before executing the command.",
+        )
+        self.parser.add_argument(
+            "-1",
+            "--single",
+            default=False,
+            action="store_true",
+            help="Execute command on a single host.",
         )
         self.parser.add_argument("command", help="Shell command to execute on tremote hosts.", nargs="?")
 
@@ -86,25 +102,40 @@ class PsshCLI(CLI):
                 display.display(f"    {host}")
             return
 
-        # Find addresses for all hosts.
-        address_to_host = {}
-        for host in hosts:
-            host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
-            address_to_host[host_var["ansible_host"]] = host
-
         if not cliargs["command"]:
             raise AnsibleError("COMMAND is required if --list-hosts is not used.")
 
-        user = cliargs.get("user")
+        if cliargs["single"]:
+            del hosts[1:]
+
+        # Find addresses for all hosts.
+        address_to_host = {}
+        deploy_docker_folders: set[str] = set()
+        for host in hosts:
+            host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
+            address_to_host[host_var["ansible_host"]] = host
+            if deploy_docker_folder := host_var.get("deploy_docker_folder"):
+                templar = Templar(loader, host_var)
+                deploy_docker_folders.add(templar.template(deploy_docker_folder))
+
+        command = cliargs["command"]
+        if cliargs["chdir_to_docker"]:
+            if not deploy_docker_folders:
+                raise AnsibleError("deploy_docker_folder is unknown, use --playbook-dir to specify basedir.")
+            if len(deploy_docker_folders) > 1:
+                raise AnsibleError("Multiple deploy_docker_folder values, cannot proceed.")
+            deploy_docker_folder = deploy_docker_folders.pop()
+            command = f"cd '{deploy_docker_folder}'; {command}"
+
+        user = cliargs.get("remote_user")
         client = ParallelSSHClient(list(address_to_host), user=user)
-        results = client.run_command(cliargs["command"], stop_on_errors=False)
-        client.join(results)
+        results = client.run_command(command, stop_on_errors=False)
         for result in results:
             host = address_to_host[result.host]
 
             # Have to read full output before asking for exit code.
-            stdout = list(result.stdout)
-            stderr = list(result.stderr)
+            stdout = list(result.stdout) if result.stdout is not None else []
+            stderr = list(result.stderr) if result.stderr is not None else []
 
             if result.exception:
                 display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
