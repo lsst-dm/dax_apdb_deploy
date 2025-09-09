@@ -77,7 +77,7 @@ class MedusaClI(CLI):
             "--full",
             default=False,
             action="store_true",
-            help="Make full backup, default is incremental backup.",
+            help="Make full backup, default is differential backup.",
         )
         parser.add_argument(
             "-a",
