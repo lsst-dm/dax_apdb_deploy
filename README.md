@@ -135,3 +135,43 @@ The command to execute is passed via `cmd` variable (which needs extra quoting i
 Here is how to quote command in case of extra parameters:
 
     ansible-playbook -i <inventory> -e cmd='"clearsnapshot --all"' nodetool.yml
+
+
+## Executing shell commands
+
+The `ansible-pssh` script can be used to execute arbitrary shell commands on remote nodes.
+It uses Ansible inventory to determine which hosts to use for execution.
+An example of running of asimple command on all hosts:
+
+    ansible-pssh -i inventory-apdb_dev.yaml "ls -l"
+
+A `-d` option can be used to change current working directory to the location of docker-compose configuration, and it also needs `--playbook-dir` option:
+
+    ansible-pssh -i inventory-apdb_dev.yaml -d --playbook-dir=cassandra_cluster "docker compose ps"
+
+A `-1` option can be specified to limit execution to a single host, first in the inventory list:
+
+    ansible-pssh -i inventory-apdb_dev.yaml -d --playbook-dir=cassandra_cluster -1 "./nodetool status"
+
+
+## Making backups
+
+The `medusa-backup` script is used to manage Cassandra backups.
+It is implemented on top of [cassandra-medusa](https://github.com/thelastpickle/cassandra-medusa) and uses Ansible inventory to determine the set of hosts in a cluster.
+In current setup `cassandra-medusa` runs as gRPC service on each node in a cluster, and `medusa-backup` sends commands to these services.
+
+Backups are stored in S3 bucket, its location is determined by the configuration file in `cassandra_cluster/roles/medusa_configs` role.
+
+To list existing backups:
+
+    medusa-backup -i inventory-apdb_dev.yaml show-backups
+
+To create a new backup (`-a` is for async mode):
+
+    medusa-backup -i inventory-apdb_dev.yaml make-backup -a
+
+To delete a backup:
+
+    medusa-backup -i inventory-apdb_dev.yaml delete-backup <backup-name>
+
+Restore procedure is still work in progress.
