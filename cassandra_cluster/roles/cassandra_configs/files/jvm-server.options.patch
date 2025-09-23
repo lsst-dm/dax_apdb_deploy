@@ -9,6 +9,13 @@
 +-Xms64G
 +-Xmx64G
 +-XX:-UseCompressedOops
- 
+
  # Young generation size is automatically calculated by cassandra-env
  # based on this formula: min(100 * num_cores, 1/4 * heap size)
+@@ -208,3 +209,6 @@
+ # * CAP_NOWARN: same as previous, except that the client warning will not be emitted.
+ #
+ #-Dcassandra.expiration_date_overflow_policy=REJECT
++
++# Allow number of validators to exceed number of compactors.
++-Dcassandra.allow_unlimited_concurrent_validations=true
