@@ -1,0 +1,45 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for medusa_restore
+
+# We need all services stopped before restoring.
+- name: Check running services
+  ansible.builtin.shell: docker compose ps --services --filter "status=running"
+  args:
+    chdir: "{{ deploy_docker_folder }}"
+  register: running_services
+
+- name: Fail if services are running
+  ansible.builtin.fail:
+    msg: "All services must be stopped before restore."
+  when: running_services.stdout != ""
+
+# Check that data directory exists.
+- name: Check data directory
+  ansible.builtin.stat:
+    path:  "{{ data_dir }}"
+  register: data_dir_stat
+
+- name: Fail if data directory is missing
+  ansible.builtin.fail:
+    msg: "Data directory must be re-created before restore."
+  when: not data_dir_stat.stat.exists or not data_dir_stat.stat.isdir
+
+- name: Fail if backup name is missing
+  ansible.builtin.fail:
+    msg: "Backup name is not defined ('backup_name' variable is missing)."
+  when: backup_name is undefined
+
+# Now run medusa container in restore mode
+- name: Start cluster restore
+  community.docker.docker_compose_v2_run:
+    service: "{{ backup_service_name }}"
+    env:
+      MEDUSA_MODE: "RESTORE"
+      BACKUP_NAME: "{{ backup_name }}"
+      RESTORE_KEY: "{{ backup_name }}"
+      MEDUSA_TMP_DIR: "/var/lib/cassandra"
+    project_src: "{{ deploy_docker_folder }}"
+    cleanup: true
+    detach: true
+    name: medusa-restore

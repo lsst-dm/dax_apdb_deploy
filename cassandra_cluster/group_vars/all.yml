@@ -74,8 +74,8 @@ backup_bucket_name: usdf-apdb-prod
 backup_aws_key_file: /run/secrets/medusa-minio-credentials
 backup_hashi_vault_aws_path: rubin/usdf-apdb-prod/s3
 backup_prefix: medusa_backup_{{ cluster_unique_id }}
-backup_transfer_max_bandwidth: 500MB/s
-backup_concurrent_transfers: 1
+backup_transfer_max_bandwidth: 2048MB/s
+backup_concurrent_transfers: 5
 backup_s3_host: s3dfrgw.slac.stanford.edu
 backup_s3_port: 443
 
