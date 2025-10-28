@@ -41,7 +41,7 @@ Cluster-specific overrides for these variables appear in the file `cassandra_clu
 
 Deployment of Cassandra on a cluster of hosts includes:
 
-- One time setup of each host, this typically requires `sudo` on remote host (enabled by passin `-k` option to ansible command):
+- One time setup of each host, this typically requires `sudo` on remote host:
   - Creating directories for Cassandra data and logs.
   - Adjusting some kernel parameters for performance.
   - Updating `telegraf` configuration if monitoring is enabled.
@@ -64,7 +64,7 @@ Very first start of the multi-node cluster needs special care:
 - Once all seed nodes are up, all other nodes can be started.
 - If authentication is enabled (should be true for any reasonable setup):
   - Using default initial credentials (`cassandra`/`cassandra`) create new super-user account.
-  - Using new super-user accout delete default `cassandra` account.
+  - Using new super-user account delete default `cassandra` account.
   - Create additional non-super-user accounts, typically allowing them to create keyspaces.
 
 Non-trivial part here is how to realize that bootstrap is needed.
@@ -136,6 +136,8 @@ Here is how to quote command in case of extra parameters:
 
     ansible-playbook -i <inventory> -e cmd='"clearsnapshot --all"' nodetool.yml
 
+An `ansible-pssh` script may be a better interface for `nodetool` for commands that produce output.
+
 
 ## Executing shell commands
 
@@ -152,6 +154,9 @@ A `-d` option can be used to change current working directory to the location of
 A `-1` option can be specified to limit execution to a single host, first in the inventory list:
 
     ansible-pssh -i inventory-apdb_dev.yaml -d --playbook-dir=cassandra_cluster -1 "./nodetool status"
+
+By default `ansible-pssh` waits until execution of all commands completes to print their output.
+A `-f` option can be used to print output of the remote commands as soon as it appears, prefixing each line with the remote host name.
 
 
 ## Making backups
@@ -174,4 +179,20 @@ To delete a backup:
 
     medusa-backup -i inventory-apdb_dev.yaml delete-backup <backup-name>
 
-Restore procedure is still work in progress.
+
+## Restoring backups
+
+The `medusa-restore` playbook can be used to restore the full cluster or one or more nodes.
+This playbook does a complete restore of all keyspaces, there is no option for selective restore of a keyspace or a table.
+The services have to be stopped before restore can start and data directory must exist (created with `site-init` playbook).
+
+The name of a backup to restore is passed as a variable.
+If `medusa` service is not running it is possible to lookup backup names in S3 bucket which hosts backups.
+
+An example of full cluster restore:
+
+    ansible-playbook -i <inventory> -e backup_name=backup-20251014 medusa-restore.yml
+
+Single-node restore can be done by limiting set of nodes with `-l` option:
+
+    ansible-playbook -i <inventory> -l sdfk8sk007 -e backup_name=backup-20251014 medusa-restore.yml
