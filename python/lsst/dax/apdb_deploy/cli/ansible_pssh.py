@@ -31,6 +31,7 @@ from ansible.errors import AnsibleError
 from ansible.template import Templar
 from ansible.utils.display import Display
 from pssh.clients import ParallelSSHClient
+from pssh.exceptions import Timeout
 
 display = Display()
 
@@ -70,6 +71,13 @@ class PsshCLI(CLI):
             default=False,
             action="store_true",
             help="Execute command on a single host.",
+        )
+        self.parser.add_argument(
+            "-f",
+            "--follow",
+            default=False,
+            action="store_true",
+            help="Print output without waiting for command completion.",
         )
         self.parser.add_argument("command", help="Shell command to execute on tremote hosts.", nargs="?")
 
@@ -129,6 +137,12 @@ class PsshCLI(CLI):
 
         user = cliargs.get("remote_user")
         client = ParallelSSHClient(list(address_to_host), user=user)
+        if cliargs.get("follow"):
+            self._exec_follow(client, command, address_to_host)
+        else:
+            self._exec_wait(client, command, address_to_host)
+
+    def _exec_wait(self, client: ParallelSSHClient, command: str, address_to_host: dict[str, str]) -> None:
         results = client.run_command(command, stop_on_errors=False)
         for result in results:
             host = address_to_host[result.host]
@@ -150,6 +164,43 @@ class PsshCLI(CLI):
                 display.display("[error output]", color="yellow")
                 for line in stderr:
                     display.display(line, color="yellow")
+
+    def _exec_follow(self, client: ParallelSSHClient, command: str, address_to_host: dict[str, str]) -> None:
+        results = client.run_command(command, stop_on_errors=False, use_pty=True, read_timeout=0.1)
+        finished = []
+        while results:
+            for result in results:
+                host = address_to_host[result.host]
+
+                try:
+                    for line in result.stdout:
+                        display.display(f"[{host}] {line}")
+                except Timeout:
+                    pass
+
+                try:
+                    for line in result.stderr:
+                        display.display(f"[{host} error] {line}", color="yellow")
+                except Timeout:
+                    pass
+
+                if result.exit_code is not None:
+                    finished.append(result)
+
+            results = [result for result in results if result not in finished]
+
+        for result in finished:
+            host = address_to_host[result.host]
+            if result.exception:
+                display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
+            elif result.exit_code == 0:
+                display.display(f"[SUCCESS: {host}]", color="green")
+            else:
+                display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
+
+            result.client.close_channel(result.channel)
+
+        client.join(finished)
 
 
 def main(args: list[str] | None = None) -> None:
