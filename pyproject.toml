@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "lsst-dax-apdb-deploy"
 requires-python = ">=3.11.0"
 description = "Deployment tools for APDB Cassandra cluster."
-license = {text = "BSD 3-Clause License"}
+license = "BSD-3-Clause"
+license-files = ["COPYRIGHT", "LICENSE"]
 readme = "README.md"
 authors = [
     {name="Rubin Observatory Data Management", email="dm-admin@lists.lsst.org"},
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -44,7 +44,6 @@ where = ["python"]
 
 [tool.setuptools]
 zip-safe = true
-license-files = ["COPYRIGHT", "LICENSE"]
 
 [tool.setuptools.package-data]
 "lsst.dax.apdb_deploy" = ["py.typed"]
