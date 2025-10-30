@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "lsst-dax-apdb-deploy"
 requires-python = ">=3.11.0"
 description = "Deployment tools for APDB Cassandra cluster."
-license = "BSD-3-Clause"
+license = "GPL-3.0-or-later"
 license-files = ["COPYRIGHT", "LICENSE"]
 readme = "README.md"
 authors = [
