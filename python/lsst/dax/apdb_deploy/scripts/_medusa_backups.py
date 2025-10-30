@@ -64,6 +64,10 @@ def medusa_delete_backup(hosts: list[str], name: str, port: int) -> None:
     asyncio.run(_delete_backup(hosts=hosts, name=name, port=port))
 
 
+def medusa_purge_backups(hosts: list[str], port: int) -> None:
+    asyncio.run(_purge_backups(hosts=hosts, port=port))
+
+
 async def _make_backup(*, hosts: list[str], port: int, name: str | None, full: bool, _async: bool) -> None:
     mode = "full" if full else "differential"
     if not name:
@@ -127,3 +131,9 @@ async def _delete_backup(*, hosts: list[str], name: str, port: int) -> None:
         raise ValueError(f"Backup {name} is not known.")
 
     await client.delete_backup(name)
+
+
+async def _purge_backups(*, hosts: list[str], port: int) -> None:
+    contact = f"{hosts[0]}:{port}"
+    client = Client(contact)
+    await client.purge_backups()

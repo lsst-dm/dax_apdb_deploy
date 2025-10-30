@@ -59,6 +59,7 @@ class MedusaClI(CLI):
         self._create_make_backup(subparsers)
         self._create_show_backups(subparsers)
         self._create_delete_backup(subparsers)
+        self._create_purge_backups(subparsers)
 
     def _create_show_backups(self, subparsers: argparse._SubParsersAction) -> None:
         parser = subparsers.add_parser("show-backups", help="Show existing backups.")
@@ -93,6 +94,13 @@ class MedusaClI(CLI):
         parser = subparsers.add_parser("delete-backup", help="Delete existing backup.")
         parser.add_argument("name", type=str, help="Backup name.")
         parser.set_defaults(method=scripts.medusa_delete_backup)
+
+    def _create_purge_backups(self, subparsers: argparse._SubParsersAction) -> None:
+        parser = subparsers.add_parser(
+            "purge-backups",
+            help="Delete obsolete backups based on max_backup_age and max_backup_count.",
+        )
+        parser.set_defaults(method=scripts.medusa_purge_backups)
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
         options = super().post_process_args(options)
