@@ -22,6 +22,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import random
 
 from ansible import constants as C
 from ansible import context
@@ -73,6 +75,13 @@ class PsshCLI(CLI):
             help="Execute command on a single host.",
         )
         self.parser.add_argument(
+            "-r",
+            "--randomize",
+            default=False,
+            action="store_true",
+            help="Randomize node list.",
+        )
+        self.parser.add_argument(
             "-f",
             "--follow",
             default=False,
@@ -82,7 +91,33 @@ class PsshCLI(CLI):
         self.parser.add_argument("command", help="Shell command to execute on tremote hosts.", nargs="?")
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
+        """Post process command line arguments.
+
+        Parameters
+        ----------
+        options : `argparse.Namespace`
+            Parsed command line arguments.
+
+        Returns
+        -------
+        options : `argparse.Namespace`
+            Validated and possibly updated command line arguments.
+        """
         options = super().post_process_args(options)
+
+        # If --chdir-to-docker option is present then we need --playbook-dir
+        # if we are not in the correct directory already. Try to guess where
+        # it is.
+        if options.chdir_to_docker and not options.basedir:
+            files = os.listdir()
+            if os.path.basename(os.getcwd()) == "cassandra_cluster" and "roles" in files:
+                # We are already there.
+                pass
+            elif "cassandra_cluster" in files and "roles" in os.listdir("cassandra_cluster"):
+                options.basedir = "cassandra_cluster"
+            else:
+                raise AnsibleError("Cannot locate playbook folder, use --playbook-dir to specify basedir.")
+
         return options
 
     def run(self) -> None:
@@ -95,7 +130,7 @@ class PsshCLI(CLI):
 
         # get list of hosts to execute against
         try:
-            hosts = self.get_host_list(inventory, cliargs["subset"])
+            hosts = list(self.get_host_list(inventory, cliargs["subset"]))
         except AnsibleError:
             if context.CLIARGS["subset"]:
                 raise
@@ -113,6 +148,9 @@ class PsshCLI(CLI):
         if not cliargs["command"]:
             raise AnsibleError("COMMAND is required if --list-hosts is not used.")
 
+        if cliargs["randomize"]:
+            random.shuffle(hosts)
+
         if cliargs["single"]:
             del hosts[1:]
 
@@ -122,9 +160,11 @@ class PsshCLI(CLI):
         for host in hosts:
             host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
             address_to_host[host_var["ansible_host"]] = host
-            if deploy_docker_folder := host_var.get("deploy_docker_folder"):
-                templar = Templar(loader, host_var)
-                deploy_docker_folders.add(templar.template(deploy_docker_folder))
+
+            if cliargs["chdir_to_docker"]:
+                if deploy_docker_folder := host_var.get("deploy_docker_folder"):
+                    templar = Templar(loader, host_var)
+                    deploy_docker_folders.add(templar.template(deploy_docker_folder))
 
         command = cliargs["command"]
         if cliargs["chdir_to_docker"]:
