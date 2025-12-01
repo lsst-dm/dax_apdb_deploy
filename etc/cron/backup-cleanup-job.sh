@@ -83,8 +83,8 @@ echo
 
 # Delete now.
 for backup in $delete_daily $delete_monthly $delete_weekly; do
-    echo "NOT deleting backup $backup"
-    echo command: medusa-backup -i "$inventory" delete-backup "$backup"
+    echo "Deleting backup $backup"
+    medusa-backup -i "$inventory" delete-backup "$backup"
 done
 
 # And list backups.
