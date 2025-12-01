@@ -22,6 +22,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import random
 
 from ansible import constants as C
 from ansible import context
@@ -30,8 +32,9 @@ from ansible.cli.arguments import option_helpers
 from ansible.errors import AnsibleError
 from ansible.template import Templar
 from ansible.utils.display import Display
-from pssh.clients import ParallelSSHClient
+from pssh.clients import ParallelSSHClient, SSHClient
 from pssh.exceptions import Timeout
+from pssh.output import HostOutput
 
 display = Display()
 
@@ -73,6 +76,20 @@ class PsshCLI(CLI):
             help="Execute command on a single host.",
         )
         self.parser.add_argument(
+            "-s",
+            "--serial",
+            default=False,
+            action="store_true",
+            help="Execute command sequentially on each host.",
+        )
+        self.parser.add_argument(
+            "-r",
+            "--randomize",
+            default=False,
+            action="store_true",
+            help="Randomize node list.",
+        )
+        self.parser.add_argument(
             "-f",
             "--follow",
             default=False,
@@ -82,7 +99,33 @@ class PsshCLI(CLI):
         self.parser.add_argument("command", help="Shell command to execute on tremote hosts.", nargs="?")
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
+        """Post process command line arguments.
+
+        Parameters
+        ----------
+        options : `argparse.Namespace`
+            Parsed command line arguments.
+
+        Returns
+        -------
+        options : `argparse.Namespace`
+            Validated and possibly updated command line arguments.
+        """
         options = super().post_process_args(options)
+
+        # If --chdir-to-docker option is present then we need --playbook-dir
+        # if we are not in the correct directory already. Try to guess where
+        # it is.
+        if options.chdir_to_docker and not options.basedir:
+            files = os.listdir()
+            if os.path.basename(os.getcwd()) == "cassandra_cluster" and "roles" in files:
+                # We are already there.
+                pass
+            elif "cassandra_cluster" in files and "roles" in os.listdir("cassandra_cluster"):
+                options.basedir = "cassandra_cluster"
+            else:
+                raise AnsibleError("Cannot locate playbook folder, use --playbook-dir to specify basedir.")
+
         return options
 
     def run(self) -> None:
@@ -95,7 +138,7 @@ class PsshCLI(CLI):
 
         # get list of hosts to execute against
         try:
-            hosts = self.get_host_list(inventory, cliargs["subset"])
+            hosts = list(self.get_host_list(inventory, cliargs["subset"]))
         except AnsibleError:
             if context.CLIARGS["subset"]:
                 raise
@@ -113,6 +156,9 @@ class PsshCLI(CLI):
         if not cliargs["command"]:
             raise AnsibleError("COMMAND is required if --list-hosts is not used.")
 
+        if cliargs["randomize"]:
+            random.shuffle(hosts)
+
         if cliargs["single"]:
             del hosts[1:]
 
@@ -122,9 +168,11 @@ class PsshCLI(CLI):
         for host in hosts:
             host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
             address_to_host[host_var["ansible_host"]] = host
-            if deploy_docker_folder := host_var.get("deploy_docker_folder"):
-                templar = Templar(loader, host_var)
-                deploy_docker_folders.add(templar.template(deploy_docker_folder))
+
+            if cliargs["chdir_to_docker"]:
+                if deploy_docker_folder := host_var.get("deploy_docker_folder"):
+                    templar = Templar(loader, host_var)
+                    deploy_docker_folders.add(templar.template(deploy_docker_folder))
 
         command = cliargs["command"]
         if cliargs["chdir_to_docker"]:
@@ -136,14 +184,31 @@ class PsshCLI(CLI):
             command = f"cd '{deploy_docker_folder}'; {command}"
 
         user = cliargs.get("remote_user")
-        client = ParallelSSHClient(list(address_to_host), user=user)
-        if cliargs.get("follow"):
-            self._exec_follow(client, command, address_to_host)
+        if cliargs["serial"]:
+            clients = [SSHClient(host_address, user=user) for host_address in address_to_host]
+            if cliargs.get("follow"):
+                results = []
+                for client in clients:
+                    result = client.run_command(command, use_pty=True, read_timeout=0.1)
+                    self._exec_follow([result], address_to_host)
+                    results.append(result)
+                self._summarize(results, address_to_host)
+            else:
+                for client in clients:
+                    result = client.run_command(command)
+                    self._exec_wait([result], address_to_host)
         else:
-            self._exec_wait(client, command, address_to_host)
+            client = ParallelSSHClient(list(address_to_host), user=user)
+            if cliargs.get("follow"):
+                results = client.run_command(command, use_pty=True, read_timeout=0.1, stop_on_errors=False)
+                self._exec_follow(results, address_to_host)
+                self._summarize(results, address_to_host)
+                client.join(results)
+            else:
+                results = client.run_command(command, stop_on_errors=False)
+                self._exec_wait(results, address_to_host)
 
-    def _exec_wait(self, client: ParallelSSHClient, command: str, address_to_host: dict[str, str]) -> None:
-        results = client.run_command(command, stop_on_errors=False)
+    def _exec_wait(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
         for result in results:
             host = address_to_host[result.host]
 
@@ -165,8 +230,7 @@ class PsshCLI(CLI):
                 for line in stderr:
                     display.display(line, color="yellow")
 
-    def _exec_follow(self, client: ParallelSSHClient, command: str, address_to_host: dict[str, str]) -> None:
-        results = client.run_command(command, stop_on_errors=False, use_pty=True, read_timeout=0.1)
+    def _exec_follow(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
         finished = []
         while results:
             for result in results:
@@ -189,7 +253,8 @@ class PsshCLI(CLI):
 
             results = [result for result in results if result not in finished]
 
-        for result in finished:
+    def _summarize(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
+        for result in results:
             host = address_to_host[result.host]
             if result.exception:
                 display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
@@ -197,10 +262,7 @@ class PsshCLI(CLI):
                 display.display(f"[SUCCESS: {host}]", color="green")
             else:
                 display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
-
             result.client.close_channel(result.channel)
-
-        client.join(finished)
 
 
 def main(args: list[str] | None = None) -> None:

@@ -63,6 +63,14 @@ class MedusaClI(CLI):
 
     def _create_show_backups(self, subparsers: argparse._SubParsersAction) -> None:
         parser = subparsers.add_parser("show-backups", help="Show existing backups.")
+        parser.add_argument(
+            "-j",
+            "--json",
+            dest="as_json",
+            default=False,
+            action="store_true",
+            help="Output in JSON format.",
+        )
         parser.set_defaults(method=scripts.medusa_show_backups)
 
     def _create_make_backup(self, subparsers: argparse._SubParsersAction) -> None:

@@ -22,6 +22,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import sys
 from datetime import UTC, datetime
 
 from medusa.service.grpc.client import Client
@@ -56,8 +58,8 @@ def medusa_make_backup(hosts: list[str], port: int, name: str | None, full: bool
     asyncio.run(_make_backup(hosts=hosts, port=port, name=name, full=full, _async=_async))
 
 
-def medusa_show_backups(hosts: list[str], port: int) -> None:
-    asyncio.run(_show_backups(hosts=hosts, port=port))
+def medusa_show_backups(hosts: list[str], port: int, as_json: bool) -> None:
+    asyncio.run(_show_backups(hosts=hosts, port=port, as_json=as_json))
 
 
 def medusa_delete_backup(hosts: list[str], name: str, port: int) -> None:
@@ -87,37 +89,55 @@ async def _make_backup(*, hosts: list[str], port: int, name: str | None, full: b
         await backup
 
 
-async def _show_backups(*, hosts: list[str], port: int) -> None:
+async def _show_backups(*, hosts: list[str], port: int, as_json: bool) -> None:
     contact = f"{hosts[0]}:{port}"
     client = Client(contact)
     backups = await client.get_backups()
 
-    table = PrettyTable()
-    table.field_names = [
-        "Backup name",
-        "Start Time",
-        "Finish Time",
-        "Nodes",
-        "Status",
-        "Type",
-        "#Objects",
-        "Size",
-    ]
-    for backup in backups:
-        row = [
-            backup.backupName,
-            _time_fmt(backup.startTime),
-            _time_fmt(backup.finishTime),
-            f"{backup.finishedNodes}/{backup.totalNodes}",
-            # node_list[0],
-            _status_fmt(backup.status),
-            backup.backupType,
-            str(backup.totalObjects),
-            _size_fmt(backup.totalSize),
-        ]
-        table.add_row(row)
+    if as_json:
+        data = []
+        for backup in backups:
+            row_dict = {
+                "name": backup.backupName,
+                "start_time": backup.startTime,
+                "finish_time": backup.finishTime,
+                "finished_nodes": backup.finishedNodes,
+                "total_nodes": backup.totalNodes,
+                "status": _status_fmt(backup.status),
+                "type": backup.backupType,
+                "total_objects": backup.totalObjects,
+                "total_size": backup.totalSize,
+            }
+            data.append(row_dict)
+        json.dump(data, sys.stdout, indent=3)
 
-    print(table)
+    else:
+        table = PrettyTable()
+        table.field_names = [
+            "Backup name",
+            "Start Time",
+            "Finish Time",
+            "Nodes",
+            "Status",
+            "Type",
+            "#Objects",
+            "Size",
+        ]
+        for backup in backups:
+            row = [
+                backup.backupName,
+                _time_fmt(backup.startTime),
+                _time_fmt(backup.finishTime),
+                f"{backup.finishedNodes}/{backup.totalNodes}",
+                # node_list[0],
+                _status_fmt(backup.status),
+                backup.backupType,
+                str(backup.totalObjects),
+                _size_fmt(backup.totalSize),
+            ]
+            table.add_row(row)
+
+        print(table)
 
 
 async def _delete_backup(*, hosts: list[str], name: str, port: int) -> None:
