@@ -97,7 +97,7 @@ async def _show_backups(*, hosts: list[str], port: int, as_json: bool) -> None:
     if as_json:
         data = []
         for backup in backups:
-            row = {
+            row_dict = {
                 "name": backup.backupName,
                 "start_time": backup.startTime,
                 "finish_time": backup.finishTime,
@@ -108,7 +108,7 @@ async def _show_backups(*, hosts: list[str], port: int, as_json: bool) -> None:
                 "total_objects": backup.totalObjects,
                 "total_size": backup.totalSize,
             }
-            data.append(row)
+            data.append(row_dict)
         json.dump(data, sys.stdout, indent=3)
 
     else:
