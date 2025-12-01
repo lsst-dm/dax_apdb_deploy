@@ -32,8 +32,9 @@ from ansible.cli.arguments import option_helpers
 from ansible.errors import AnsibleError
 from ansible.template import Templar
 from ansible.utils.display import Display
-from pssh.clients import ParallelSSHClient
+from pssh.clients import ParallelSSHClient, SSHClient
 from pssh.exceptions import Timeout
+from pssh.output import HostOutput
 
 display = Display()
 
@@ -73,6 +74,13 @@ class PsshCLI(CLI):
             default=False,
             action="store_true",
             help="Execute command on a single host.",
+        )
+        self.parser.add_argument(
+            "-s",
+            "--serial",
+            default=False,
+            action="store_true",
+            help="Execute command sequentially on each host.",
         )
         self.parser.add_argument(
             "-r",
@@ -176,14 +184,31 @@ class PsshCLI(CLI):
             command = f"cd '{deploy_docker_folder}'; {command}"
 
         user = cliargs.get("remote_user")
-        client = ParallelSSHClient(list(address_to_host), user=user)
-        if cliargs.get("follow"):
-            self._exec_follow(client, command, address_to_host)
+        if cliargs["serial"]:
+            clients = [SSHClient(host_address, user=user) for host_address in address_to_host]
+            if cliargs.get("follow"):
+                results = []
+                for client in clients:
+                    result = client.run_command(command, use_pty=True, read_timeout=0.1)
+                    self._exec_follow([result], address_to_host)
+                    results.append(result)
+                self._summarize(results, address_to_host)
+            else:
+                for client in clients:
+                    result = client.run_command(command)
+                    self._exec_wait([result], address_to_host)
         else:
-            self._exec_wait(client, command, address_to_host)
+            client = ParallelSSHClient(list(address_to_host), user=user)
+            if cliargs.get("follow"):
+                results = client.run_command(command, use_pty=True, read_timeout=0.1, stop_on_errors=False)
+                self._exec_follow(results, address_to_host)
+                self._summarize(results, address_to_host)
+                client.join(results)
+            else:
+                results = client.run_command(command, stop_on_errors=False)
+                self._exec_wait(results, address_to_host)
 
-    def _exec_wait(self, client: ParallelSSHClient, command: str, address_to_host: dict[str, str]) -> None:
-        results = client.run_command(command, stop_on_errors=False)
+    def _exec_wait(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
         for result in results:
             host = address_to_host[result.host]
 
@@ -205,8 +230,7 @@ class PsshCLI(CLI):
                 for line in stderr:
                     display.display(line, color="yellow")
 
-    def _exec_follow(self, client: ParallelSSHClient, command: str, address_to_host: dict[str, str]) -> None:
-        results = client.run_command(command, stop_on_errors=False, use_pty=True, read_timeout=0.1)
+    def _exec_follow(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
         finished = []
         while results:
             for result in results:
@@ -229,7 +253,8 @@ class PsshCLI(CLI):
 
             results = [result for result in results if result not in finished]
 
-        for result in finished:
+    def _summarize(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
+        for result in results:
             host = address_to_host[result.host]
             if result.exception:
                 display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
@@ -237,10 +262,7 @@ class PsshCLI(CLI):
                 display.display(f"[SUCCESS: {host}]", color="green")
             else:
                 display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
-
             result.client.close_channel(result.channel)
-
-        client.join(finished)
 
 
 def main(args: list[str] | None = None) -> None:
