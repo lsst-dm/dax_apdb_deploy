@@ -38,6 +38,9 @@ services:
     environment:
       CASSANDRA_SEEDS: "{{ cluster_seed_hosts_names }}"
       CASSANDRA_CLUSTER_NAME: "{{ cluster_name | default('APDB_TEST') }}"
+      CASSANDRA_DC: "{{ node_datacenter | default('datacenter1') }}"
+      CASSANDRA_RACK: "{{ node_rack | default('rack1') }}"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
       {% if need_jolokia -%}
       JVM_EXTRA_OPTS: "-javaagent:/opt/cassandra/lib/jolokia-jvm.jar=port=8778,host=localhost"
       {%- endif %}
