@@ -1,6 +1,12 @@
 ---
 
 apdb_test:
+  children:
+    apdb_test_rack1:
+  vars:
+    node_datacenter: "dc-prompt-prod"
+
+apdb_test_rack1:
   hosts:
     sdfk8sk007:
       ansible_host: sdfk8sk007.sdf.slac.stanford.edu
@@ -16,3 +22,5 @@ apdb_test:
       ansible_host: sdfk8sk011.sdf.slac.stanford.edu
     sdfk8sk012:
       ansible_host: sdfk8sk012.sdf.slac.stanford.edu
+  vars:
+    node_rack: "rack-1"
