@@ -1,18 +1,16 @@
---- jvm-server.options.orig	2024-09-18 04:56:33.000000000 -0700
-+++ jvm-server.options	2025-02-18 14:59:34.926281262 -0800
-@@ -179,8 +179,9 @@
- # the same value to avoid stop-the-world GC pauses during resize, and
- # so that we can lock the heap in memory on startup to prevent any
- # of it from being swapped out.
--#-Xms4G
--#-Xmx4G
+--- jvm-server.options.orig     2025-12-10 14:43:25.853880972 -0800
++++ jvm-server.options  2025-12-10 14:45:06.774444355 -0800
+@@ -165,6 +165,9 @@
+ #
+ # For production use you may wish to adjust this for your environment.
+ # If that's the case, see MAX_HEAP_SIZE (and HEAP_NEWSIZE for CMS) in cassandra-env.sh
 +-Xms64G
 +-Xmx64G
 +-XX:-UseCompressedOops
 
- # Young generation size is automatically calculated by cassandra-env
- # based on this formula: min(100 * num_cores, 1/4 * heap size)
-@@ -208,3 +209,6 @@
+ #####################
+ # OFF-HEAP SETTINGS #
+@@ -186,3 +189,6 @@
  # * CAP_NOWARN: same as previous, except that the client warning will not be emitted.
  #
  #-Dcassandra.expiration_date_overflow_policy=REJECT
