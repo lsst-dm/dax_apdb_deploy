@@ -1,6 +1,6 @@
---- jvm11-server.options.orig   2025-12-10 14:43:32.499288427 -0800
-+++ jvm11-server.options        2025-12-10 14:49:35.724824655 -0800
-@@ -81,7 +81,7 @@
+--- jvm17-server.options.orig   2025-12-11 14:13:59.209357678 -0800
++++ jvm17-server.options        2025-12-11 14:15:50.255994053 -0800
+@@ -51,7 +51,7 @@
  ## Optional G1 Settings
  # Save CPU time on large (>= 16GB) heaps by delaying region scanning
  # until the heap is 70% full. The default in Hotspot 8u40 is 40%.
@@ -9,7 +9,7 @@
 
  # For systems with > 8 cores, the default ParallelGCThreads is 5/8 the number of logical cores.
  # Otherwise equal to the number of cores when 8 or less.
-@@ -89,8 +89,8 @@
+@@ -59,8 +59,8 @@
  # By default, ConcGCThreads is 1/4 of ParallelGCThreads.
  # Setting both to the same value can reduce STW durations.
  # When leaving both unset then cassandra-env.sh will set them both to the number of your cores.
@@ -20,7 +20,7 @@
 
 
  ### JPMS
-@@ -120,7 +120,7 @@
+@@ -95,7 +95,7 @@
  # Java 11 (and newer) GC logging options:
  # See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
  # The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
