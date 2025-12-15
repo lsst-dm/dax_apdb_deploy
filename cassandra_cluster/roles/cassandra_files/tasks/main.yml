@@ -31,6 +31,7 @@
   loop:
     - "{{ cassandra_files_jvm_server_options }}"
     - "{{ cassandra_files_jvm11_server_options }}"
+    - "{{ cassandra_files_jvm17_server_options }}"
 
 - name: "Copy cassandra config file"
   ansible.builtin.template:

@@ -12,3 +12,6 @@ hashi_vault_super_path: "rubin/usdf-apdb-test/cassandra-super"
 hashi_vault_mount_point: "secret"
 
 use_backups: true
+
+
+cassandra_version: 5.0.6

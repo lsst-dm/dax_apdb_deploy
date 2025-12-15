@@ -34,6 +34,7 @@
               - "{{ cassandra_configs_conf_in_tar }}/cassandra.yaml"
               - "{{ cassandra_configs_conf_in_tar }}/jvm-server.options"
               - "{{ cassandra_configs_conf_in_tar }}/jvm11-server.options"
+              - "{{ cassandra_configs_conf_in_tar }}/jvm17-server.options"
             dest: "{{ local_cache }}"
 
     - name: "Process cassandra.yaml overrides"
@@ -62,10 +63,10 @@
         src: "{{ cassandra_configs_unpacked_conf }}/{{ item }}.options"
         dest: "{{ group_local_cache }}/{{ item }}-{{ cassandra_version }}.options"
         mode: "644"
-      loop: ["jvm-server", "jvm11-server"]
+      loop: ["jvm-server", "jvm11-server", "jvm17-server"]
 
     - name: "Patch jvm-server.options files"
       ansible.posix.patch:
         src: "{{ item }}.options.patch"
         dest: "{{ group_local_cache }}/{{ item }}-{{ cassandra_version }}.options"
-      loop: ["jvm-server", "jvm11-server"]
+      loop: ["jvm-server", "jvm11-server", "jvm17-server"]

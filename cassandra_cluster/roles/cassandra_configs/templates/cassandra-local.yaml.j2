@@ -4,7 +4,7 @@
 
 # Cassandra will listen_address in any case internally, but for medusa we
 # need the name of the host (not localhost) here. This file is first processed
-# locally and then we do another transform when copying it to remote, thios is
+# locally and then we do another transform when copying it to remote, this is
 # why "raw" is here.
 listen_address: '"{% raw %}{{ ansible_host }}{% endraw %}"'
 
@@ -22,7 +22,6 @@ concurrent_writes: 256
 row_cache_size: 0MiB
 
 file_cache_size: 2048MiB
-# buffer_pool_use_heap_if_exhausted: true  # deprecated
 
 memtable_heap_space: 4096MiB
 memtable_flush_writers: 8
@@ -62,9 +61,10 @@ tables_fail_threshold: -1
 # Increase logging threshold for slow queries from 500ms to 60s.
 slow_query_log_timeout: 60s
 
-# Secret undocumented parameter, it may be missing in orginal, "!" will add it.
-"!disk_access_mode": mmap_index_only
+"disk_access_mode": mmap_index_only
 
 # Secret undocumented parameter, it may be missing in orginal, "!" will add it.
 # This needs to be at least as high as other request tmeouts.
 "!native_transport_timeout": 120s
+
+native_transport_max_auth_threads: 0
