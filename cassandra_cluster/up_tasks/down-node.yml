@@ -1,0 +1,14 @@
+- name: "Drain cassandra node"
+  ansible.builtin.command:
+    cmd: "./nodetool drain"
+    chdir: "{{ deploy_docker_folder }}"
+
+- name: "Stop compaction"
+  ansible.builtin.command:
+    cmd: "./nodetool stop"
+    chdir: "{{ deploy_docker_folder }}"
+
+- name: "Stop daemon"
+  ansible.builtin.command:
+    cmd: "./nodetool stopdaemon"
+    chdir: "{{ deploy_docker_folder }}"
