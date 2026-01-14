@@ -39,10 +39,11 @@
     mbean = "org.apache.cassandra.metrics:name=*,scope=*,type=ClientRequest"
     tag_keys = ["name", "scope"]
 
-  [[inputs.jolokia2_agent.metric]]
-    name  = "ColumnFamily"
-    mbean = "org.apache.cassandra.metrics:keyspace=*,name=*,scope=*,type=ColumnFamily"
-    tag_keys = ["keyspace", "name", "scope"]
+  # This generates too many metrics.
+  #[[inputs.jolokia2_agent.metric]]
+  #  name  = "ColumnFamily"
+  #  mbean = "org.apache.cassandra.metrics:keyspace=*,name=*,scope=*,type=ColumnFamily"
+  #  tag_keys = ["keyspace", "name", "scope"]
 
   [[inputs.jolokia2_agent.metric]]
     name  = "CommitLog"
