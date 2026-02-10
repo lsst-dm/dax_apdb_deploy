@@ -1,12 +1,12 @@
 ---
 
-apdb_dev:
+apdb_prod:
   children:
-    apdb_dev_rack1:
+    apdb_prod_rack1:
   vars:
     node_datacenter: "dc-prompt-prod"
 
-apdb_dev_rack1:
+apdb_prod_rack1:
   hosts:
     sdfk8sk001:
       ansible_host: sdfk8sk001.sdf.slac.stanford.edu
