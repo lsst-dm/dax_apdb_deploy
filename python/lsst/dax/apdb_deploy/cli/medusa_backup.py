@@ -101,6 +101,12 @@ class MedusaClI(CLI):
     def _create_delete_backup(self, subparsers: argparse._SubParsersAction) -> None:
         parser = subparsers.add_parser("delete-backup", help="Delete existing backup.")
         parser.add_argument("name", type=str, help="Backup name.")
+        parser.add_argument(
+            "--host",
+            type=str,
+            default=None,
+            help="Host to connect to, default is the first host in inventory.",
+        )
         parser.set_defaults(method=scripts.medusa_delete_backup)
 
     def _create_purge_backups(self, subparsers: argparse._SubParsersAction) -> None:
