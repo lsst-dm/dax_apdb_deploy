@@ -62,8 +62,8 @@ def medusa_show_backups(hosts: list[str], port: int, as_json: bool) -> None:
     asyncio.run(_show_backups(hosts=hosts, port=port, as_json=as_json))
 
 
-def medusa_delete_backup(hosts: list[str], name: str, port: int) -> None:
-    asyncio.run(_delete_backup(hosts=hosts, name=name, port=port))
+def medusa_delete_backup(hosts: list[str], name: str, port: int, host: str | None) -> None:
+    asyncio.run(_delete_backup(hosts=hosts, name=name, port=port, host=host))
 
 
 def medusa_purge_backups(hosts: list[str], port: int) -> None:
@@ -140,8 +140,19 @@ async def _show_backups(*, hosts: list[str], port: int, as_json: bool) -> None:
         print(table)
 
 
-async def _delete_backup(*, hosts: list[str], name: str, port: int) -> None:
+async def _delete_backup(*, hosts: list[str], name: str, port: int, host: str | None) -> None:
     contact = f"{hosts[0]}:{port}"
+    if host:
+        if host in hosts:
+            contact = f"{host}:{port}"
+        else:
+            for fqdn in hosts:
+                hname, _, _ = fqdn.partition(".")
+                if host == hname:
+                    contact = f"{fqdn}:{port}"
+                    break
+            else:
+                raise ValueError(f"Host '{host}' is not in inventory.")
     client = Client(contact)
 
     # Have to check backup status first to refresh internal state of the

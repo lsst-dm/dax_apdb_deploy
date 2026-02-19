@@ -40,10 +40,10 @@ use_password: false
 credentials_source:
 
 # Path for regular user credentials in HashiCorp Vault.
-hashi_vault_user_path: "rubin/usdf-apdb-dev/apdb-prod"
+hashi_vault_user_path: ""
 
 # Path for superuser credentials in HashiCorp Vault.
-hashi_vault_super_path: "rubin/usdf-apdb-dev/apdb-prod"
+hashi_vault_super_path: ""
 
 # Maunt point for HashiCorp Vault.
 hashi_vault_mount_point: "secret"
