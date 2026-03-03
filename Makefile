@@ -14,8 +14,9 @@ setup: _venv ansible collections
 
 $(VENV_LOCATION) :
 	@python3 -c 'import sys; sys.exit(0 if sys.version_info[:2] >= (3,9) else "*** ERROR: Python 3.9+ is required.")'
+	@python3 -c 'import sys; sys.exit(0 if sys.version_info[:2] < (3,13) else "*** ERROR: Python 3.13+ is not supported.")'
 	python3 -m venv $(VENV_LOCATION)
-	@echo "\n === Execute '. setup.sh' to activate environment ===\n"
+	@echo  "=== Execute '. setup.sh' to activate environment ==="
 
 ansible : $(VENV_LOCATION)
 	. $(VENV_LOCATION)/bin/activate; python3 -m pip install -r requirements.txt
