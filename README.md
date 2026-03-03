@@ -13,6 +13,8 @@ Before using this package one needs to perform a one-time initialization:
 
 All these steps are executed by running `make setup` which uses `Makefile` in the top-level package folder.
 
+NOTE: at this time some dependencies cannot use Python 3.13, 3.12 should be used instead.
+
 Every new shell will need to activate the virtual environment and set up some environment variables with this command:
 
     . ./setup.sh
@@ -21,7 +23,7 @@ Every new shell will need to activate the virtual environment and set up some en
 ## Ansible inventories
 
 Ansible inventory is a collection of hosts, or groups of hosts, with additional metadata attached.
-Each Cassandra cluster is defined in a separate inventory file with the name starting with `inventory` and followed by cluster name, e.g. `inventory-apdb_dev.yaml`.
+Each Cassandra cluster is defined in a separate inventory file with the name starting with `inventory` and followed by cluster name, e.g. `inventory-apdb_int.yaml`.
 Inventories are located in the top level directory of this package.
 
 Execution of ansible playbooks requires passing the name of the inventory file, e.g.:
@@ -35,6 +37,19 @@ One can limit the set of nodes with `-l` option, e.g.:
 Some ansible variables will be specific to a cluster.
 Defaults for this variables are set in the file `cassandra_cluster/group_vars/all.yml`.
 Cluster-specific overrides for these variables appear in the file `cassandra_cluster/group_vars/<cluster_name>.yml`.
+
+## User accounts
+
+Cassandra services run from a special service account (`runbincas`) on each cluster host.
+Kerberos authentication is used for connecting to cluster nodes via SSH:
+- user executing Ansible roles needs to have their principal added to `~rubincas/.k5login` on each node (message `usdf-help`),
+- user need to have a valid Kerberos token by executing `kinit`.
+
+Some Ansible roles require `root` privileges, but `rubincas` is not allowed to `sudo`.
+To execute such role the user needs to use their own account and be granted `sudo` privileges.
+
+To run Ansible role from user account with sudo one adds `--become --ask-become-pass --user $USER` and optionally `--ask-pass` options to Ansible commands (or short options `-b -K -u $USER` and `-k`).
+Cluster nodes do not have home directories for regular users, but it is possible to create them under existing `/sdf/home` folder and add `.k5login` file to avoid using `--as-pass` options.
 
 
 ## Deployment model
