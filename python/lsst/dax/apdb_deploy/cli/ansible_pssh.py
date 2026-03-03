@@ -46,7 +46,6 @@ class PsshCLI(CLI):
 
     def init_parser(self) -> None:
         super().init_parser(
-            usage="usage: %prog [options] command",
             desc="Execute command on each host in inventory.",
         )
 
