@@ -32,7 +32,7 @@ from ansible.cli.arguments import option_helpers
 from ansible.errors import AnsibleError
 from ansible.template import Templar
 from ansible.utils.display import Display
-from pssh.clients import ParallelSSHClient, SSHClient
+from pssh.clients.ssh import ParallelSSHClient, SSHClient
 from pssh.exceptions import Timeout
 from pssh.output import HostOutput
 
@@ -184,7 +184,9 @@ class PsshCLI(CLI):
 
         user = cliargs.get("remote_user")
         if cliargs["serial"]:
-            clients = [SSHClient(host_address, user=user) for host_address in address_to_host]
+            clients = [
+                SSHClient(host_address, user=user, gssapi_auth=True, ) for host_address in address_to_host
+            ]
             if cliargs.get("follow"):
                 results = []
                 for client in clients:
@@ -197,7 +199,7 @@ class PsshCLI(CLI):
                     result = client.run_command(command)
                     self._exec_wait([result], address_to_host)
         else:
-            client = ParallelSSHClient(list(address_to_host), user=user)
+            client = ParallelSSHClient(list(address_to_host), user=user, gssapi_auth=True)
             if cliargs.get("follow"):
                 results = client.run_command(command, use_pty=True, read_timeout=0.1, stop_on_errors=False)
                 self._exec_follow(results, address_to_host)
