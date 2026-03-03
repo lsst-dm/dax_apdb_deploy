@@ -1,0 +1,24 @@
+---
+
+apdb_int:
+  children:
+    apdb_int_rack1:
+  vars:
+    node_datacenter: "dc-prompt-int"
+
+apdb_int_rack1:
+  hosts:
+    sdfcasdev001:
+      ansible_host: sdfcasdev001.sdf.slac.stanford.edu
+      cassandra_seed: true
+    sdfcasdev002:
+      ansible_host: sdfcasdev002.sdf.slac.stanford.edu
+    sdfcasdev003:
+      ansible_host: sdfcasdev003.sdf.slac.stanford.edu
+    sdfcasdev101:
+      ansible_host: sdfcasdev101.sdf.slac.stanford.edu
+      cassandra_seed: true
+    sdfcasdev102:
+      ansible_host: sdfcasdev102.sdf.slac.stanford.edu
+  vars:
+    node_rack: "rack-1"
