@@ -11,9 +11,16 @@
     - name: "Stop Cassandra service"
       ansible.builtin.import_tasks: up_tasks/down-node.yml
 
+    - name: "Stop container"
+      community.docker.docker_compose_v2:
+        state: absent
+        project_src: "{{ deploy_docker_folder }}"
+        wait: true
+        wait_timeout: 60
+
     - name: "Restart container"
       community.docker.docker_compose_v2:
-        state: restarted
+        state: present
         services: ["{{ service_name }}"]
         project_src: "{{ deploy_docker_folder }}"
         wait: true
