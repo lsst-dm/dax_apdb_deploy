@@ -41,6 +41,7 @@ services:
       CASSANDRA_DC: "{{ node_datacenter | default('datacenter1') }}"
       CASSANDRA_RACK: "{{ node_rack | default('rack1') }}"
       CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      CQL_HISTORY: "/tmp/.cql_history"
       {% if need_jolokia -%}
       JVM_EXTRA_OPTS: "-javaagent:/opt/cassandra/lib/jolokia-jvm.jar=port=8778,host=localhost"
       {%- endif %}
@@ -48,6 +49,7 @@ services:
     logging:
       driver: loki
       options:
+        mode: non-blocking
         loki-url: http://sdfloki.slac.stanford.edu:80/loki/api/v1/push
         loki-pipeline-stages: |
           - multiline:
@@ -116,6 +118,7 @@ services:
     logging:
       driver: loki
       options:
+        mode: non-blocking
         loki-url: http://sdfloki.slac.stanford.edu:80/loki/api/v1/push
         loki-pipeline-stages: |
           - multiline:
