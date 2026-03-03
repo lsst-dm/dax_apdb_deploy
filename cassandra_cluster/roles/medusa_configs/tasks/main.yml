@@ -13,7 +13,7 @@
         # plugin instead of module.
         - name: "Ask Vault for AWS credentials"
           ansible.builtin.set_fact:
-            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', '{{ backup_hashi_vault_aws_path }}', mount_point='{{ hashi_vault_mount_point }}') }}"
+            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', backup_hashi_vault_aws_path, mount_point=hashi_vault_mount_point) }}"
 
         - name: "Extract credentials"
           ansible.builtin.set_fact:
@@ -53,7 +53,7 @@
         # plugin instead of module.
         - name: "Ask Vault for AWS credentials"
           ansible.builtin.set_fact:
-            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', '{{ hashi_vault_super_path }}', mount_point='{{ hashi_vault_mount_point }}') }}"
+            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', hashi_vault_super_path, mount_point=hashi_vault_mount_point) }}"
 
         - name: "Extract credentials"
           ansible.builtin.set_fact:

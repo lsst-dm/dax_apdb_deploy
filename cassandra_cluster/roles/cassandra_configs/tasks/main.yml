@@ -44,8 +44,8 @@
 
     - name: "Load cassandra.yaml files"
       ansible.builtin.set_fact:
-        c8_yaml_orig: "{{ lookup('file', '{{ cassandra_configs_unpacked_conf }}/cassandra.yaml') }}"
-        c8_yaml_local: "{{ lookup('file', '{{ group_local_cache }}/cassandra-local.yaml') }}"
+        c8_yaml_orig: "{{ lookup('file', cassandra_configs_unpacked_conf + '/cassandra.yaml') }}"
+        c8_yaml_local: "{{ lookup('file', group_local_cache + '/cassandra-local.yaml') }}"
 
     - name: "Merge cassandra.yaml files"
       ansible.builtin.set_fact:
