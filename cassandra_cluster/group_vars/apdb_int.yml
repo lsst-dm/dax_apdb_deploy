@@ -1,8 +1,8 @@
 ---
-cluster_name: "USDF APDB Test Cluster"
-cluster_unique_id: "apdb_test"
+cluster_name: "USDF APDB Integration Cluster"
+cluster_unique_id: "apdb_int"
 deploy_folder: "/sdf/home/r/rubincas/apdb_deploy"
-data_dir: "/zfspool/cassandra/test-apdb-cluster"
+data_dir: "/zfspool/cassandra/apdb-cluster-int"
 logs_dir: "/zfspool/cassandra/logs"
 
 use_password: true

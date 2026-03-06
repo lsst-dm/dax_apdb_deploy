@@ -1,7 +1,7 @@
 # Playbook for one-time initialization of remote nodes.
 ---
 
-- name: "Create all directories needed for deployment"
+- name: "Create directories for deployment, update system parameters"
   hosts: "{{ ansible_play_hosts }}"
   gather_facts: true
   become: true
@@ -26,7 +26,7 @@
 
     # Copied from community.cassandra.cassandra_linux role.
     - name: "Ensure max_map_count is 1048575"
-      sysctl:
+      ansible.posix.sysctl:
         name: vm.max_map_count
         value: "1048575"
         sysctl_set: yes
@@ -34,16 +34,16 @@
 
     # Copied from community.cassandra.cassandra_linux role.
     - name: "Extra Limit for RH Derived Distros"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/security/limits.d/90-nproc.conf
         regexp: "^\\* - nproc 32768"
         line: "* - nproc 32768"
         create: yes
-      when: ansible_os_family == "RedHat"
+      when: ansible_facts["os_family"] == "RedHat"
 
     # Copied from community.cassandra.cassandra_linux role.
     - name: "Ensure limits are set"
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /etc/security/limits.conf
         block: |
           {{ cassandra_user_uid }} - memlock unlimited
