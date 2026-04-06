@@ -1,0 +1,102 @@
+#!/usr/bin/bash
+#
+# Script to caclulate keyspace size.
+#
+# The script executes `nodetool tablestats` on each node and sums all numbers.
+
+
+usage() {
+    cat << EOD
+
+Usage: $0 inventory-file
+
+Available options:
+
+    -h      Display usage information.
+    -u      Report uncompressed size of data.
+    -H      Show size in human-readable format.
+H
+EOD
+}
+
+uncompressed=0
+human=0
+
+while getopts huH c; do
+    case $c in
+        h) usage; exit 0 ;;
+        u) uncompressed=1 ;;
+        H) human=1 ;;
+        \?) usage >&2; exit 1 ;;
+    esac
+done
+
+shift $((OPTIND-1))
+if [ $# -ne 1 ]; then
+    usage >&2
+    exit 1
+fi
+
+inventory=$1
+
+ansible-pssh -i $inventory -d './nodetool tablestats' |\
+gawk -v uncomp=$uncompressed -v human=$human '
+    function hsize(size, w) {
+        if ( size < 1024 ) return sprintf("%*d B", w, size)
+        size /= 1024
+        if ( size < 1024 ) return sprintf("%*.2f KiB", w, size)
+        size /= 1024
+        if ( size < 1024 ) return sprintf("%*.2f MiB", w, size)
+        size /= 1024
+        if ( size < 1024 ) return sprintf("%*.2f GiB", w, size)
+        size /= 1024
+        return sprintf("%*.2f TiB", w, size)
+    }
+
+
+    /^Keyspace : / { ks = $3; keyspaces[ks] = ks; }
+    /^\s*Table: / { t = $2 }
+    /Space used .total.: / {
+        s = $4
+        compressed[ks][t] += s
+        ks_compressed[ks] += s
+    }
+    /SSTable Compression Ratio: / {
+        if (s > 0) {
+            u = s / $4
+            uncompressed[ks][t] += u
+            ks_uncompressed[ks] += u
+        }
+    }
+
+    END {
+        asort(keyspaces)
+        maxl = 0
+        for (i in keyspaces) {
+            l = length(keyspaces[i])
+            if (l > maxl) maxl = l
+        }
+        sep = ""
+        for (i=0; i<maxl; ++i) sep = sep "-"
+        if (human) {
+            printf "%-*s %s\n", maxl, "Keyspace", "      Size"
+            printf "%s---------------\n", sep
+        } else {
+            printf "%-*s %s\n", maxl, "Keyspace", "     Size, bytes"
+            printf "%s-----------------\n", sep
+        }
+        for (i in keyspaces) {
+            ks = keyspaces[i]
+            size = ks_compressed[ks]
+            if (size > 0) {
+                if (uncomp) size = ks_uncompressed[ks]
+                if (human) {
+                    printf "%-*s %s\n", maxl, ks, hsize(size, 10)
+                } else {
+                    printf "%-*s %16d\n", maxl, ks, size
+                }
+            }
+        }
+
+    }
+'
