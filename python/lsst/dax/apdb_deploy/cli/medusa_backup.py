@@ -41,7 +41,7 @@ class MedusaClI(CLI):
 
     def init_parser(self) -> None:
         super().init_parser(
-            desc="Execute command on each host in inventory.",
+            desc="Command line interface for making and restoring backups.",
         )
 
         opt_help.add_inventory_options(self.parser)

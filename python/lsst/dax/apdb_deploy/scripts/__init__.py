@@ -1,3 +1,4 @@
+from ._clone_keyspace import clone_dump_keyspace, clone_list_keyspaces
 from ._medusa_backups import (
     medusa_delete_backup,
     medusa_make_backup,
