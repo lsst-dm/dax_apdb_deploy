@@ -22,20 +22,25 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
+import json
 import logging
 import os
 import re
 import subprocess
+from string import Template
 
 from cassandra.auth import AuthProvider, PlainTextAuthProvider
-from cassandra.cluster import Cluster
+from cassandra.cluster import Cluster, Session
+from cassandra.policies import RoundRobinPolicy
 from prettytable import PrettyTable
 
 _LOG = logging.getLogger(__name__)
 
 _KS_PLACEHOLDER = "${KEYSPACE}"
+_EXISTS_PLACEHOLDER = "${IF_NOT_EXISTS}"
 
-_CREATE_TABLE_RE = re.compile('(.*CREATE TABLE )([^.]+)([.].*)', re.DOTALL)
+_CREATE_TABLE_RE = re.compile("(.*CREATE TABLE )([^.]+)([.].*)", re.DOTALL)
 
 
 def _check_dsbulk() -> None:
@@ -44,6 +49,7 @@ def _check_dsbulk() -> None:
         subprocess.run(("dsbulk", "--version"), capture_output=True)
     except Exception as exc:
         raise RuntimeError(f"Failed to execute dsbulk, check $PATH: {exc}") from None
+
 
 def _make_auth_provider(username: str | None, password: str | None) -> AuthProvider | None:
     """Make Cassandra authentication provider instance."""
@@ -59,12 +65,20 @@ def _make_cluster(hosts: list[str], port: int, username: str | None, password: s
         contact_points=contact_points,
         port=port,
         auth_provider=_make_auth_provider(username, password),
+        load_balancing_policy=RoundRobinPolicy(),
+        protocol_version=5,
     )
+
+def _keyspace_tables(session: Session, keyspace: str) -> list[str]:
+    """Get the list of tables in a keyspace."""
+    query = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s'"
+    result = session.execute(query, [keyspace])
+    return [row[0] for row in result]
 
 
 def _replace_ks_name(statement: str) -> str:
     """Replace keyspace name in CREATE TABLE with a placeholder"""
-    return _CREATE_TABLE_RE.sub(f"\\1{_KS_PLACEHOLDER}\\3", statement)
+    return _CREATE_TABLE_RE.sub(f"\\1{_EXISTS_PLACEHOLDER} {_KS_PLACEHOLDER}\\3", statement)
 
 
 def clone_list_keyspaces(hosts: list[str], port: int, username: str | None, password: str | None) -> None:
@@ -116,6 +130,56 @@ def clone_dump_keyspace(
     )
 
 
+def clone_load_keyspace(
+    keyspace: str,
+    folder: str,
+    hosts: list[str],
+    port: int,
+    username: str | None,
+    password: str | None,
+    tables_to_load: list[str],
+    skip_existing_tables: bool,
+    dry_run: bool,
+) -> None:
+    """Load keyspace data from a specified directory.
+
+    Parameters
+    ----------
+    keyspace : `str`
+        Keyspace name.
+    folder : `str`
+        Folder name to load data from.
+    hosts : `list` [`str`]
+        Names of the hosts in the cluster.
+    port : `int`
+        CQL port number.
+    username : `str` or `None`
+        Cassandra user name.
+    password : `str` or `None`
+        Cassandra password.
+    tables_to_load : `list` [`str`]
+        List of tables to load, if empty then all tables will be loaded.
+    skip_existing_tables : `bool`
+        If `True` then loading will be skipped for the tables that already
+        exist in the keyspace.
+    dry_run : `bool`
+        If `True` print actions but do not restore.
+    """
+    asyncio.run(
+        _load_keyspace(
+            keyspace=keyspace,
+            folder=folder,
+            hosts=hosts,
+            port=port,
+            username=username,
+            password=password,
+            tables_to_load=tables_to_load,
+            skip_existing_tables=skip_existing_tables,
+            dry_run=dry_run,
+        )
+    )
+
+
 async def _list_keyspaces(*, hosts: list[str], port: int, username: str | None, password: str | None) -> None:
     with _make_cluster(hosts, port, username, password) as cluster:
         with cluster.connect() as session:
@@ -138,7 +202,7 @@ async def _dump_keyspace(
     _check_dsbulk()
 
     # Create destination if does not exist.
-    dsbulk_logs = os.path.join(destination, "dsbulk_log")
+    dsbulk_logs = os.path.join(destination, "_dsbulk_log")
     os.makedirs(dsbulk_logs, exist_ok=True)
     manifest: list[str] = []
 
@@ -151,26 +215,21 @@ async def _dump_keyspace(
                 raise ValueError(f"Keyspace {keyspace!r} does not exist.")
 
             # Get the list of tables.
-            query = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s'"
-            result = session.execute(query, [keyspace])
-            tables = sorted(row[0] for row in result)
+            tables = sorted(_keyspace_tables(session, keyspace))
             if not tables:
                 raise ValueError(f"Keyspace {keyspace!r} does not have any tables.")
 
             # Dump schema for all tables but do not include CREATE KEYSPACE.
-            with open(os.path.join(destination, "schema.cql"), "w") as out:
-                for table in tables:
-                    query = f'DESCRIBE "{keyspace}"."{table}"'
-                    result = session.execute(query)
-                    table_schema = result.one().create_statement
-                    table_schema = _replace_ks_name(table_schema)
-                    print(f"{table_schema}\n", file=out)
-            manifest.append("schema.cql")
-
-    with open(os.path.join(destination, "tables.txt"), "w") as out:
-        for table in tables:
-            print(table, file=out)
-    manifest.append("tables.txt")
+            schema = {}
+            for table in tables:
+                query = f'DESCRIBE "{keyspace}"."{table}"'
+                result = session.execute(query)
+                table_schema = result.one().create_statement
+                table_schema = _replace_ks_name(table_schema)
+                schema[table] = table_schema
+            with open(os.path.join(destination, "schema.json"), "w") as out:
+                json.dump(schema, out)
+            manifest.append("schema.json")
 
     for table in tables:
         file_name = _dump_table(
@@ -184,7 +243,7 @@ async def _dump_keyspace(
         )
         manifest.append(file_name)
 
-    # Finally write manifest.
+    # Finally write manifest, it is a marker that dump is complete.
     with open(os.path.join(destination, "manifest.txt"), "w") as out:
         for name in manifest:
             print(name, file=out)
@@ -205,6 +264,7 @@ def _dump_table(
     log_dir = os.path.join(destination, "_dsbulk_log")
     os.makedirs(log_dir, exist_ok=True)
 
+    # Command to dump table data in CSV format to stdout.
     cmd = [
         "dsbulk",
         "unload",
@@ -236,7 +296,8 @@ def _dump_table(
         try:
             dsbulk = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             gzip = subprocess.Popen(("gzip", "-9"), stdin=dsbulk.stdout, stdout=fd)
-            dsbulk.stdout.close()
+            if dsbulk.stdout:
+                dsbulk.stdout.close()
             gzip.wait()
         except Exception as exc:
             raise RuntimeError(f"Failed to execute dsbulk unload: {exc}") from None
@@ -247,3 +308,156 @@ def _dump_table(
             os.close(fd)
 
     return output_file
+
+
+async def _load_keyspace(
+    keyspace: str,
+    folder: str,
+    hosts: list[str],
+    port: int,
+    username: str | None,
+    password: str | None,
+    tables_to_load: list[str],
+    skip_existing_tables: bool,
+    dry_run: bool,
+) -> None:
+    # Need dsbulk, check that it can be found.
+    _check_dsbulk()
+
+    # Check that folder is there.
+    if not os.path.isdir(folder):
+        raise ValueError(f"Folder {folder!r} does not exist or is not a directory.")
+
+    # Check manifest.
+    manifest_path = os.path.join(folder, "manifest.txt")
+    if not os.path.isfile(manifest_path):
+        raise ValueError(f"Manifest file {manifest_path!r} does not exist, dump may be incomplete.")
+
+    # Read schema.
+    schema_path = os.path.join(folder, "schema.json")
+    with open(schema_path) as f:
+        schema = json.load(f)
+        if not isinstance(schema, dict):
+            raise TypeError("Unexpected type of schema object in schema.json.")
+        if not schema:
+            raise ValueError("Empty dictionary found in schema.json.")
+
+    # Check that all explicitly requested tables exist in the dump.
+    if tables_to_load:
+        if extra := (set(tables_to_load) - set(schema)):
+            raise ValueError(f"Tables {extra} do not exist in the dump.")
+    else:
+        tables_to_load = sorted(schema)
+
+    with _make_cluster(hosts, port, username, password) as cluster:
+        with cluster.connect() as session:
+            query = "SELECT keyspace_name FROM system_schema.keyspaces where keyspace_name ='%s'"
+            result = session.execute(query, (keyspace,))
+            if len(list(result)) == 0:
+                raise LookupError(
+                    f"Keyspace {keyspace!r} does not exist in destination cluster, "
+                    "it has to be created first."
+                )
+
+            # Find existing tables.
+            existing_tables = set(_keyspace_tables(session, keyspace))
+
+            if existing_tables and not skip_existing_tables:
+                raise ValueError(
+                    "Keyspace already contains some tables, "
+                    "use --skip-existing-tables option if you want to avoid restoring them."
+                )
+
+            for table in tables_to_load:
+
+                if skip_existing_tables and table in existing_tables:
+                    _LOG.info("Table %s already exists, skipping.", table)
+                    continue
+
+                # Generate table schema and create the table.
+                _LOG.info("Creating table %s", table)
+                if not dry_run:
+                    table_schema_template = Template(schema[table])
+                    table_ddl = table_schema_template.substitute(KEYSPACE=keyspace, IF_NOT_EXISTS="")
+                    session.execute(table_ddl, timeout=600.0)
+
+                # Load the data.
+                _load_table(
+                    host=hosts[0],
+                    port=port,
+                    keyspace=keyspace,
+                    table=table,
+                    folder=folder,
+                    username=username,
+                    password=password,
+                    dry_run=dry_run,
+                )
+
+
+def _load_table(
+    host: str,
+    port: int,
+    keyspace: str,
+    table: str,
+    folder: str,
+    username: str | None,
+    password: str | None,
+    dry_run: bool,
+) -> None:
+    """Dump table contents as CSV file."""
+    input_file = f"{table}.csv.gz"
+    input_path = os.path.join(folder, input_file)
+
+    # dsbulk does not handle empty CSV files, skip them.
+    with gzip.open(input_path) as f:
+        data = f.read(1)
+        if not data:
+            _LOG.info("Skip restoring table %s, file %s is empty.", table, input_path)
+            return
+
+    _LOG.info("Restoring table %s from file %s", table, input_path)
+    if dry_run:
+        return
+
+    log_dir = os.path.join(folder, "_dsbulk_log")
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Command to load table data in CSV format from stdin.
+    cmd = [
+        "dsbulk",
+        "load",
+        "-h",
+        f'["{host}"]',
+        "-port",
+        str(port),
+        "-k",
+        keyspace,
+        "-t",
+        table,
+        "-logDir",
+        log_dir,
+        "--log.verbosity",
+        "quiet",
+    ]
+    if username:
+        cmd += ["-u", username]
+    if password:
+        cmd += ["-p", password, "--driver.advanced.auth-provider.class=PlainTextAuthProvider"]
+
+    # Run gunzip and pipe its output to dsbulk.
+    fd = None
+    try:
+        fd = os.open(input_path, os.O_RDONLY | os.O_DIRECT)
+        try:
+            gunzip = subprocess.Popen(("gunzip", ), stdin=fd, stdout=subprocess.PIPE)
+            dsbulk = subprocess.Popen(cmd, stdin=gunzip.stdout)
+            if gunzip.stdout:
+                gunzip.stdout.close()
+            dsbulk.wait()
+        except Exception as exc:
+            raise RuntimeError(f"Failed to execute dsbulk load: {exc}") from None
+    except Exception as exc:
+        raise RuntimeError(f"Failed to open output file: {exc}") from None
+    finally:
+        if fd is not None:
+            os.close(fd)

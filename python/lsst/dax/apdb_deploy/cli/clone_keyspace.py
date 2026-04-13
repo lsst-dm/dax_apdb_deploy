@@ -82,6 +82,7 @@ class CloneKeyspaceClI(CLI):
         subparsers = self.parser.add_subparsers(title="available subcommands", required=True)
         self._create_list_keyspaces(subparsers)
         self._create_dump_keyspace(subparsers)
+        self._create_load_keyspace(subparsers)
 
     def _create_list_keyspaces(self, subparsers: argparse._SubParsersAction) -> None:
         parser = subparsers.add_parser("list-keyspaces", help="Show existing keyspaces.")
@@ -90,8 +91,31 @@ class CloneKeyspaceClI(CLI):
     def _create_dump_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
         parser = subparsers.add_parser("dump-keyspace", help="Dump keyspace to a folder.")
         parser.add_argument("keyspace", type=str, help="Keyspace name.")
-        parser.add_argument("destination", type=str, help="Folder to dump files, will be created if does not exist.")
+        parser.add_argument(
+            "destination", type=str, help="Folder to dump files, will be created if does not exist."
+        )
         parser.set_defaults(method=scripts.clone_dump_keyspace)
+
+    def _create_load_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
+        parser = subparsers.add_parser("load-keyspace", help="Load keyspace deta from a folder.")
+        parser.add_argument("keyspace", type=str, help="Keyspace name.")
+        parser.add_argument("folder", type=str, help="Folder with keyspace data created by dump-keyspace.")
+        parser.add_argument(
+            "-t",
+            "--table",
+            dest="tables_to_load",
+            type=str,
+            action="append",
+            default=[],
+            help="Only restore specified tables, can be used multiple times.",
+        )
+        parser.add_argument(
+            "--skip-existing-tables", action="store_true", help="Do not restore existing tables."
+        )
+        parser.add_argument(
+            "--dry-run", action="store_true", help="Do not restore, only print actions."
+        )
+        parser.set_defaults(method=scripts.clone_load_keyspace)
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
         """Post process command line arguments.
@@ -168,6 +192,7 @@ class CloneKeyspaceClI(CLI):
 
         # Find addresses for all hosts.
         host_address = []
+        host_var = {}
         for host in hosts:
             host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
             host_address.append(host_var["ansible_host"])
