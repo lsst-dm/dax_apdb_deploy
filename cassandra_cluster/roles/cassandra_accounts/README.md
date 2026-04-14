@@ -19,7 +19,11 @@ Requirements
 Role Variables
 --------------
 
-This role does not define local variables, but it uses a few variables defined at global level:
+This role defines a local variable:
+
+- `system_auth_rf` - replication factor for `system_auth` keyspace, it is 3 by default which is reasonable for clusters with 3+ nodes.
+
+And it uses a few variables defined at global level:
 
 - `service_name` - Cassandra service name.
 - `deploy_docker_folder` - location of the deployment folder on remote hosts.
