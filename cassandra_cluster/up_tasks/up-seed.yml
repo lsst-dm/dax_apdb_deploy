@@ -10,7 +10,7 @@
 - name: "Wait for Cassandra seed node"
   ansible.builtin.shell:
     cmd: |
-      count=120;
+      count=300;
       while ! nc -z localhost 9042; do
         count=$(expr $count - 1);
         test $count -eq 0 && exit 1;
