@@ -15,4 +15,4 @@ cd "$docker_dir"
 #     exit 1
 # fi
 
-exec docker compose run --rm $service nodetool "$@"
+exec docker compose run --quiet --rm $service nodetool "$@"
