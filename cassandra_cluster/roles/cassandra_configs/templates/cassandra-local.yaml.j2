@@ -71,3 +71,8 @@ slow_query_log_timeout: 60s
 
 native_transport_max_threads: 200
 native_transport_max_auth_threads: 0
+
+# Hinted handoff throughput.
+max_hint_window: 24h
+max_hints_delivery_threads: 8
+hinted_handoff_throttle: 10240KiB
