@@ -89,6 +89,11 @@
     mbean = "org.apache.cassandra.metrics:name=*,path=*,scope=*,type=ThreadPools"
     tag_keys = ["name", "path", "scope"]
 
+  [[inputs.jolokia2_agent.metric]]
+    name  = "HintsService"
+    mbean = "org.apache.cassandra.metrics:name=*,type=HintsService"
+    tag_keys = ["name"]
+
 # Run special processor to massage above metrics
 [[processors.execd]]
 
