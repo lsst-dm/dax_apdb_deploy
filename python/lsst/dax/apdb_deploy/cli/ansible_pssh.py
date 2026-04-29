@@ -95,7 +95,7 @@ class PsshCLI(CLI):
             action="store_true",
             help="Print output without waiting for command completion.",
         )
-        self.parser.add_argument("command", help="Shell command to execute on tremote hosts.", nargs="?")
+        self.parser.add_argument("command", help="Shell command to execute on remote hosts.", nargs="?")
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
         """Post process command line arguments.
@@ -185,7 +185,12 @@ class PsshCLI(CLI):
         user = cliargs.get("remote_user")
         if cliargs["serial"]:
             clients = [
-                SSHClient(host_address, user=user, gssapi_auth=True, ) for host_address in address_to_host
+                SSHClient(
+                    host_address,
+                    user=user,
+                    gssapi_auth=True,
+                )
+                for host_address in address_to_host
             ]
             if cliargs.get("follow"):
                 results = []

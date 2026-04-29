@@ -156,7 +156,7 @@ async def _delete_backup(*, hosts: list[str], name: str, port: int, host: str | 
     client = Client(contact)
 
     # Have to check backup status first to refresh internal state of the
-    # service, otherwise it may complain that backup is not know.
+    # service, otherwise it may complain that backup is not known.
     status = await client.get_backup_status(name)
     if status == StatusType.UNKNOWN:
         raise ValueError(f"Backup {name} is not known.")
