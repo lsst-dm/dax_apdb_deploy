@@ -1,5 +1,5 @@
 ---
-cluster_name: "APDB Test Cluster"
+cluster_name: "APDB USDF test"
 cluster_unique_id: "apdb_test"
 deploy_folder: "/sdf/home/r/rubincas/apdb_deploy"
 data_dir: "/zfspool/cassandra/apdb-cluster-test"
