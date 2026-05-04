@@ -1,0 +1,53 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for prep-cluster-restore
+
+# Need to configure proxy for pip install.
+- name: "Copy squid proxy settings to remote folder"
+  ansible.builtin.copy:
+    src: "50-squid-proxy.conf"
+    dest: ".bashrc.d/50-squid-proxy.conf"
+
+- name: "Create virtual environment for cassandra-medusa"
+  ansible.builtin.command: "python3 -m venv {{ medusa_venv }}"
+
+- name: "Install cassandra-medusa in virtual environment"
+  ansible.builtin.shell: "source {{ medusa_venv }}/bin/activate; python3 -m pip install cassandra-medusa"
+
+- name: "Add bashrc entry to activate medusa virtual environment"
+  ansible.builtin.template:
+    src: 60-activate-medusa-env.conf
+    dest: .bashrc.d/60-activate-medusa-env.conf
+
+- name: "Create folder for cassandra"
+  ansible.builtin.file:
+    path: "{{ deploy_folder }}/cassandra"
+    state: "directory"
+
+- name: "Install Cassandra"
+  ansible.builtin.unarchive:
+    src: "{{ cassandra_download_uri }}"
+    dest: "{{ deploy_folder }}/cassandra"
+    remote_src: yes
+
+- name: "Get credentials for Cassandra"
+  import_role:
+    name: make_credentials
+  vars:
+    credentials_account: "cassandra_super"
+    credentials_var: super_credentials
+
+- ansible.builtin.set_fact:
+    cassandra_super_username: "{{ super_credentials.username }}"
+    cassandra_super_password: "{{ super_credentials.password }}"
+
+- name: "Create folder for restore configs"
+  ansible.builtin.file:
+    path: "{{ deploy_folder }}/cluster-restore"
+    state: "directory"
+
+- name: "Copy medusa config to restore folder"
+  ansible.builtin.template:
+    src: "medusa.ini.j2"
+    dest: "{{ deploy_folder }}/cluster-restore/medusa.ini"
+    mode: "600"

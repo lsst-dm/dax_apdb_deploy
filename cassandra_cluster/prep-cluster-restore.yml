@@ -1,0 +1,9 @@
+# Playbook for installing and initializing Cassandra cluster
+---
+
+- name: "Prepare for cluster restore"
+  hosts: "{{ ansible_play_hosts }}"
+  gather_facts: false
+
+  roles:
+    - prep-cluster-restore
