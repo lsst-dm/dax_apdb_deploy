@@ -8,6 +8,8 @@
 # why "raw" is here.
 listen_address: '"{% raw %}{{ ansible_host }}{% endraw %}"'
 
+num_tokens: {{ num_tokens }}
+
 authenticator: {{ "PasswordAuthenticator" if use_password else "AllowAllAuthenticator" }}
 authorizer: {{ "CassandraAuthorizer" if use_password else "AllowAllAuthorizer" }}
 
