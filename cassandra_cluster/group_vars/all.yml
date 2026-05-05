@@ -19,7 +19,7 @@ jolokia_version: 1.7.2
 
 # Location on controller node used to cache various files.
 local_cache: "{{ playbook_dir }}/.cache"
-group_local_cache: '{{ playbook_dir }}/.cache/{{ cluster_unique_id | default("_any_") }}'
+group_local_cache: '{{ local_cache }}/{{ cluster_unique_id | default("_any_") }}'
 
 # Directory for data on remote host. Individual clusters would usually override
 # this location.
@@ -83,3 +83,6 @@ need_jolokia: "{{ use_monitoring or use_backups }}"
 # name of the Loki docker plugin
 # (https://hub.docker.com/r/grafana/loki-docker-driver)
 loki_plugin_name: grafana/loki-docker-driver:3.6.7-amd64
+
+http_proxy: "http://sdfproxy.sdf.slac.stanford.edu:3128"
+https_proxy: "http://sdfproxy.sdf.slac.stanford.edu:3128"

@@ -31,7 +31,8 @@
   when: backup_name is undefined
 
 # Now run medusa container in restore mode
-- name: Start cluster restore
+- name: Start cluster restore in-place
+  when: restore_from is undefined
   community.docker.docker_compose_v2_run:
     service: "{{ backup_service_name }}"
     env:
@@ -39,6 +40,24 @@
       BACKUP_NAME: "{{ backup_name }}"
       RESTORE_KEY: "{{ backup_name }}"
       MEDUSA_TMP_DIR: "/var/lib/cassandra"
+    project_src: "{{ deploy_docker_folder }}"
+    cleanup: true
+    detach: true
+    name: medusa-restore
+
+# IF restore_from (per-host variable) is defined, it means that restore should
+# be done from another cluster. In this case, we need to pass POD_IP env
+# variable to medusa container.
+- name: Start cluster restore from other cluster
+  when: restore_from is defined
+  community.docker.docker_compose_v2_run:
+    service: "{{ backup_service_name }}"
+    env:
+      MEDUSA_MODE: "RESTORE"
+      BACKUP_NAME: "{{ backup_name }}"
+      RESTORE_KEY: "{{ backup_name }}"
+      MEDUSA_TMP_DIR: "/var/lib/cassandra"
+      POD_IP: "{{ restore_from }}"
     project_src: "{{ deploy_docker_folder }}"
     cleanup: true
     detach: true

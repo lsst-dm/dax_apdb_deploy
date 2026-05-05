@@ -163,6 +163,7 @@ class MedusaClI(CLI):
             "vault_ids",
             "ask_vault_pass",
             "vault_password_files",
+            "flush_cache",
         }
         for key in drop_keys:
             kwargs.pop(key, None)

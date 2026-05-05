@@ -1,0 +1,58 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for prep-cluster-restore
+
+- name: "Install cassandra-medusa in virtual environment"
+  ansible.builtin.pip:
+    name: "cassandra-medusa"
+    virtualenv: "{{ medusa_venv }}"
+    virtualenv_command: "python3 -m venv"
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+
+- name: "Create .bashrc.d directory if it doesn't exist"
+  ansible.builtin.file:
+    path: "~/.bashrc.d"
+    state: "directory"
+
+- name: "Add bashrc entry to activate medusa virtual environment"
+  ansible.builtin.template:
+    src: 60-activate-medusa-env.conf
+    dest: "~/.bashrc.d/60-activate-medusa-env.conf"
+
+- name: "Create folder for cassandra"
+  ansible.builtin.file:
+    path: "{{ deploy_folder }}/cassandra"
+    state: "directory"
+
+- name: "Install Cassandra"
+  ansible.builtin.unarchive:
+    src: "{{ cassandra_download_uri }}"
+    dest: "{{ deploy_folder }}/cassandra"
+    remote_src: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+
+- name: "Get credentials for Cassandra"
+  import_role:
+    name: make_credentials
+  vars:
+    credentials_account: "cassandra_super"
+    credentials_var: super_credentials
+
+- ansible.builtin.set_fact:
+    cassandra_super_username: "{{ super_credentials.username }}"
+    cassandra_super_password: "{{ super_credentials.password }}"
+
+- name: "Create folder for restore configs"
+  ansible.builtin.file:
+    path: "{{ deploy_folder }}/cluster-restore"
+    state: "directory"
+
+- name: "Copy medusa config to restore folder"
+  ansible.builtin.template:
+    src: "medusa.ini.j2"
+    dest: "{{ deploy_folder }}/cluster-restore/medusa.ini"
+    mode: "600"

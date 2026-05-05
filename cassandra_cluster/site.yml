@@ -1,8 +1,8 @@
 # Playbook for installing and initializing Cassandra cluster
 ---
 
-# We could execute this play only on the first node, but if there are multiple
-# groups involved then we'd have to execute it on a first node in a group.
+# We execute this play only on the first node, but if there are multiple groups
+# involved then we'd have to execute it on a first node in each group.
 - name: "Generate files on local host"
   hosts: "{{ ansible_play_hosts[0] }}"
   serial: 1

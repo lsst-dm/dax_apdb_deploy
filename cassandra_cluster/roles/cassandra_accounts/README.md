@@ -1,5 +1,5 @@
-Role Name
-=========
+cassandra_accounts
+==================
 
 This role creates new accounts in Cassandra database - one new superuser account and one new regular account.
 Default superuser account `cassandra` is disabled.
