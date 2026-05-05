@@ -2,22 +2,24 @@
 ---
 # tasks file for prep-cluster-restore
 
-# Need to configure proxy for pip install.
-- name: "Copy squid proxy settings to remote folder"
-  ansible.builtin.copy:
-    src: "50-squid-proxy.conf"
-    dest: ".bashrc.d/50-squid-proxy.conf"
-
-- name: "Create virtual environment for cassandra-medusa"
-  ansible.builtin.command: "python3 -m venv {{ medusa_venv }}"
-
 - name: "Install cassandra-medusa in virtual environment"
-  ansible.builtin.shell: "source {{ medusa_venv }}/bin/activate; python3 -m pip install cassandra-medusa"
+  ansible.builtin.pip:
+    name: "cassandra-medusa"
+    virtualenv: "{{ medusa_venv }}"
+    virtualenv_command: "python3 -m venv"
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+
+- name: "Create .bashrc.d directory if it doesn't exist"
+  ansible.builtin.file:
+    path: "~/.bashrc.d"
+    state: "directory"
 
 - name: "Add bashrc entry to activate medusa virtual environment"
   ansible.builtin.template:
     src: 60-activate-medusa-env.conf
-    dest: .bashrc.d/60-activate-medusa-env.conf
+    dest: "~/.bashrc.d/60-activate-medusa-env.conf"
 
 - name: "Create folder for cassandra"
   ansible.builtin.file:
@@ -29,6 +31,9 @@
     src: "{{ cassandra_download_uri }}"
     dest: "{{ deploy_folder }}/cassandra"
     remote_src: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
 
 - name: "Get credentials for Cassandra"
   import_role:

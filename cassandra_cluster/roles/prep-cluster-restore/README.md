@@ -15,7 +15,7 @@ Here are the steps that this role performs:
 - Installs Cassandra in `{{ deploy_folder }}/cassandra`, needed to run `sstableloader`.
 - Creates directory `{{ deploy_folder }}/cluster-restore` and copies `medusa.ini` file to that directory.
 
-The `medusa cluster-restore` command should use `--config-file={{ deploy_folder }}/medusa.ini` option, plus all other.
+The `medusa cluster-restore` command should use `--config-file={{ deploy_folder }}/cluster-restore/medusa.ini` option, plus all other.
 
 Requirements
 ------------

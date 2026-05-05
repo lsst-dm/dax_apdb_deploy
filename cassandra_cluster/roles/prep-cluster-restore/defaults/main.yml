@@ -7,3 +7,6 @@ medusa_venv: "{{ deploy_folder }}/medusa-venv"
 # Binary package location for Cassandra. This is used to install Cassandra on
 # the cluster nodes. Installation is only used by medusa restore.
 cassandra_download_uri: "https://archive.apache.org/dist/cassandra/{{ cassandra_version }}/apache-cassandra-{{ cassandra_version }}-bin.tar.gz"
+
+http_proxy: ""
+https_proxy: ""

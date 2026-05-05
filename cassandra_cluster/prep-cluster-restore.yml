@@ -1,4 +1,4 @@
-# Playbook for installing and initializing Cassandra cluster
+# Playbook for preparing hosts for `medusa cluster-restore`.
 ---
 
 - name: "Prepare for cluster restore"

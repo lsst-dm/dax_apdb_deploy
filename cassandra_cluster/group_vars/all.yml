@@ -83,3 +83,6 @@ need_jolokia: "{{ use_monitoring or use_backups }}"
 # name of the Loki docker plugin
 # (https://hub.docker.com/r/grafana/loki-docker-driver)
 loki_plugin_name: grafana/loki-docker-driver:3.6.7-amd64
+
+http_proxy: "http://sdfproxy.sdf.slac.stanford.edu:3128"
+https_proxy: "http://sdfproxy.sdf.slac.stanford.edu:3128"
