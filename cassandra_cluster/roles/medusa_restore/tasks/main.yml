@@ -48,7 +48,7 @@
 # IF restore_from (per-host variable) is defined, it means that restore should
 # be done from another cluster. In this case, we need to pass POD_IP env
 # variable to medusa container.
-- name: Start cluster restore from other cluser
+- name: Start cluster restore from other cluster
   when: restore_from is defined
   community.docker.docker_compose_v2_run:
     service: "{{ backup_service_name }}"

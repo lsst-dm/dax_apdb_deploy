@@ -21,6 +21,13 @@
       ansible.builtin.set_fact:
         _hashi_vault_path: "{{ hashi_vault_super_path }}"
 
+    - name: "Fail for unsupported credentials account"
+      when: _hashi_vault_path == ""
+      ansible.builtin.fail:
+        msg: >-
+          Unsupported credentials_account '{{ credentials_account }}'.
+          Expected one of: backup_s3, cassandra_user, cassandra_super.
+
     # Get some secrets from the Vault, runs on localhost, so use lookup
     # plugin instead of module.
     - name: "Ask Vault for credentials"

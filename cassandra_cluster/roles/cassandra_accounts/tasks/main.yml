@@ -66,7 +66,7 @@
     - name: "Allow regular user to create new keyspaces and tables"
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "GRANT CREATE ON ALL KEYSPACES TO {{ user_account_username }}"
+        execute: "GRANT CREATE ON ALL KEYSPACES TO {{ user_credentials.username }}"
         username: cassandra
         password: cassandra
       register: cqlsh_result
@@ -76,7 +76,7 @@
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "ALTER ROLE cassandra WITH SUPERUSER = false AND LOGIN = false"
-        username: "{{ super_account_username }}"
-        password: "{{ super_account_password }}"
+        username: "{{ super_credentials.username }}"
+        password: "{{ super_credentials.password }}"
       register: cqlsh_result
       failed_when: cqlsh_result.failed
