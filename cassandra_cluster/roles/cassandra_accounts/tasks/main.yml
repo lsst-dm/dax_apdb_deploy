@@ -31,33 +31,24 @@
   when: not cqlsh_using_default_login.failed
   block:
 
-    - name: "Ask Vault for cassandra accounts credentials"
-      when: credentials_source == "hashi_vault"
-      block:
-        # Get some secrets from the Vault, runs on localhost, so use lookup
-        # plugin instead of module.
-        - name: "Ask Vault for superuser cassandra account credentials"
-          ansible.builtin.set_fact:
-            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', hashi_vault_super_path, mount_point=hashi_vault_mount_point) }}"
+    - name: "Retrieve Cassandra credentials for superuser"
+      import_role:
+        name: make_credentials
+      vars:
+        credentials_account: "cassandra_super"
+        credentials_var: super_credentials
 
-        - name: "Extract credentials"
-          ansible.builtin.set_fact:
-            super_account_username: "{{ hashi_response.data.data.username }}"
-            super_account_password: "{{ hashi_response.data.data.password }}"
-
-        - name: "Ask Vault for new cassandra account credentials"
-          ansible.builtin.set_fact:
-            hashi_response: "{{ lookup('community.hashi_vault.vault_kv2_get', hashi_vault_user_path, mount_point=hashi_vault_mount_point) }}"
-
-        - name: "Extract credentials"
-          ansible.builtin.set_fact:
-            user_account_username: "{{ hashi_response.data.data.username }}"
-            user_account_password: "{{ hashi_response.data.data.password }}"
+    - name: "Retrieve Cassandra credentials for user"
+      import_role:
+        name: make_credentials
+      vars:
+        credentials_account: "cassandra_user"
+        credentials_var: user_credentials
 
     - name: "Create new superuser account"
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "CREATE ROLE {{ super_account_username }} WITH PASSWORD = '{{ super_account_password }}' AND LOGIN = true AND SUPERUSER = true"
+        execute: "CREATE ROLE {{ super_credentials.username }} WITH PASSWORD = '{{ super_credentials.password }}' AND LOGIN = true AND SUPERUSER = true"
         username: cassandra
         password: cassandra
       register: cqlsh_result
@@ -66,7 +57,7 @@
     - name: "Create regular user account"
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "CREATE ROLE {{ user_account_username }} WITH PASSWORD = '{{ user_account_password }}' AND LOGIN = true AND SUPERUSER = false"
+        execute: "CREATE ROLE {{ user_credentials.username }} WITH PASSWORD = '{{ user_credentials.password }}' AND LOGIN = true AND SUPERUSER = false"
         username: cassandra
         password: cassandra
       register: cqlsh_result
