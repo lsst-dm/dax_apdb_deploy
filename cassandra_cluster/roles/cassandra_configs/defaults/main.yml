@@ -2,4 +2,4 @@
 ---
 # defaults file for roles/cassandra_configs
 
-num_tokens: 16
+num_tokens: 4

@@ -4,6 +4,7 @@ cluster_unique_id: "apdb_prod"
 deploy_folder: "/sdf/home/r/rubincas/apdb_deploy"
 data_dir: "/zfspool/cassandra/test-apdb-cluster"
 logs_dir: "/zfspool/cassandra/logs"
+num_tokens: 16
 
 use_password: true
 credentials_source: "hashi_vault"
