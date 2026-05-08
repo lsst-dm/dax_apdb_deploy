@@ -85,7 +85,7 @@
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "ALTER KEYSPACE system_auth WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : {{ system_auth_rf }} }"
-        username: "{{ super_account_username }}"
-        password: "{{ super_account_password }}"
+        username: "{{ super_credentials.username }}"
+        password: "{{ super_credentials.password }}"
       register: cqlsh_result
       failed_when: cqlsh_result.failed
