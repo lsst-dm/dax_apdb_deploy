@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 
 from ansible import context
 from ansible.cli import CLI
@@ -30,6 +31,10 @@ from ansible.errors import AnsibleError
 from ansible.utils.display import Display
 
 from .. import scripts
+
+_log_format = "%(levelname)s: %(name)s - %(message)s"
+
+logging.basicConfig(level=logging.WARNING, format=_log_format)
 
 display = Display()
 
@@ -119,7 +124,17 @@ class MedusaClI(CLI):
         options = super().post_process_args(options)
         return options
 
-    def run(self) -> None:
+    def run(self) -> int:
+        try:
+            self._run()
+            return 0
+        except SystemExit:
+            raise
+        except BaseException:
+            logging.exception("Execution failed.")
+            return 1
+
+    def _run(self) -> None:
         super().run()
 
         # Initialize needed objects
@@ -131,7 +146,7 @@ class MedusaClI(CLI):
         try:
             hosts = self.get_host_list(inventory, cliargs["subset"])
         except AnsibleError:
-            if context.CLIARGS["subset"]:
+            if cliargs["subset"]:
                 raise
             else:
                 hosts = []
@@ -169,7 +184,10 @@ class MedusaClI(CLI):
             kwargs.pop(key, None)
 
         method = kwargs.pop("method")
-        method(**kwargs)
+        try:
+            method(**kwargs)
+        except BaseException:
+            logging.exception("Execution failed.")
 
 
 def main(args: list[str] | None = None) -> None:

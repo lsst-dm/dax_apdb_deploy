@@ -94,6 +94,14 @@ class CloneKeyspaceClI(CLI):
         parser.add_argument(
             "destination", type=str, help="Folder to dump files, will be created if does not exist."
         )
+        parser.add_argument(
+            "-j",
+            "--jobs",
+            type=int,
+            default=1,
+            metavar="COUNT",
+            help="Number of concurrent jobs, default: %(default)s.",
+        )
         parser.set_defaults(method=scripts.clone_dump_keyspace)
 
     def _create_load_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
@@ -102,19 +110,35 @@ class CloneKeyspaceClI(CLI):
         parser.add_argument("folder", type=str, help="Folder with keyspace data created by dump-keyspace.")
         parser.add_argument(
             "-t",
-            "--table",
-            dest="tables_to_load",
+            "--table-pattern",
+            dest="table_patterns",
             type=str,
             action="append",
             default=[],
-            help="Only restore specified tables, can be used multiple times.",
+            help=(
+                "Only restore specified tables, argument is a pattern that matches one or more table names, "
+                "can be used multiple times."
+            ),
         )
         parser.add_argument(
             "--skip-existing-tables", action="store_true", help="Do not restore existing tables."
         )
         parser.add_argument(
-            "--dry-run", action="store_true", help="Do not restore, only print actions."
+            "-j",
+            "--jobs",
+            type=int,
+            default=1,
+            metavar="COUNT",
+            help="Number of concurrent jobs, default: %(default)s.",
         )
+        parser.add_argument(
+            "--max-concurrent-queries",
+            type=str,
+            default=None,
+            metavar="COUNT",
+            help="Limit number cincurrent queries, one of AUTO, <N>, <N>C default: AUTO.",
+        )
+        parser.add_argument("--dry-run", action="store_true", help="Do not restore, only print actions.")
         parser.set_defaults(method=scripts.clone_load_keyspace)
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
@@ -158,11 +182,21 @@ class CloneKeyspaceClI(CLI):
         mount_point = host_vars["hashi_vault_mount_point"]
         vault_path = host_vars["hashi_vault_super_path"]
         response = client.secrets.kv.read_secret_version(vault_path, mount_point=mount_point)
-        vault_data = response['data']['data']
+        vault_data = response["data"]["data"]
         cliargs["username"] = vault_data["username"]
         cliargs["password"] = vault_data["password"]
 
-    def run(self) -> None:
+    def run(self) -> int:
+        try:
+            self._run()
+            return 0
+        except SystemExit:
+            raise
+        except BaseException:
+            logging.exception("Execution failed.")
+            return 1
+
+    def _run(self) -> None:
         super().run()
 
         # Initialize needed objects
@@ -174,10 +208,9 @@ class CloneKeyspaceClI(CLI):
         try:
             hosts = self.get_host_list(inventory, cliargs["subset"])
         except AnsibleError:
-            if context.CLIARGS["subset"]:
+            if cliargs["subset"]:
                 raise
             else:
-                hosts = []
                 display.warning("No hosts matched, nothing to do")
                 return
 
@@ -198,7 +231,7 @@ class CloneKeyspaceClI(CLI):
             host_address.append(host_var["ansible_host"])
         kwargs["hosts"] = host_address
 
-        if cliargs["use_vault"] and not(cliargs["username"] and cliargs["password"]):
+        if cliargs["use_vault"] and not (cliargs["username"] and cliargs["password"]):
             self._use_vault(kwargs, host_var)
 
         drop_keys = {

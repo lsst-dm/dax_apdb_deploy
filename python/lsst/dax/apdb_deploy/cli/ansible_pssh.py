@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import random
 
 from ansible import constants as C
@@ -36,6 +37,10 @@ from pssh.exceptions import Timeout
 from pssh.output import HostOutput
 
 from .utils import locate_basedir
+
+_log_format = "%(levelname)s: %(name)s - %(message)s"
+
+logging.basicConfig(level=logging.WARNING, format=_log_format)
 
 display = Display()
 
@@ -120,7 +125,17 @@ class PsshCLI(CLI):
             options.basedir = locate_basedir()
         return options
 
-    def run(self) -> None:
+    def run(self) -> int:
+        try:
+            self._run()
+            return 0
+        except SystemExit:
+            raise
+        except BaseException:
+            logging.exception("Execution failed.")
+            return 1
+
+    def _run(self) -> None:
         super().run()
 
         # Initialize needed objects
@@ -132,11 +147,11 @@ class PsshCLI(CLI):
         try:
             hosts = list(self.get_host_list(inventory, cliargs["subset"]))
         except AnsibleError:
-            if context.CLIARGS["subset"]:
+            if cliargs["subset"]:
                 raise
             else:
-                hosts = []
                 display.warning("No hosts matched, nothing to do")
+                return
 
         # just listing hosts?
         if cliargs["listhosts"]:

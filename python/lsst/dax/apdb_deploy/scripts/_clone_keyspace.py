@@ -22,12 +22,15 @@
 from __future__ import annotations
 
 import asyncio
+import fnmatch
 import gzip
 import json
 import logging
 import os
 import re
+import shlex
 import subprocess
+import time
 from string import Template
 
 from cassandra.auth import AuthProvider, PlainTextAuthProvider
@@ -69,6 +72,7 @@ def _make_cluster(hosts: list[str], port: int, username: str | None, password: s
         protocol_version=5,
     )
 
+
 def _keyspace_tables(session: Session, keyspace: str) -> list[str]:
     """Get the list of tables in a keyspace."""
     query = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s'"
@@ -81,7 +85,7 @@ def _replace_ks_name(statement: str) -> str:
     return _CREATE_TABLE_RE.sub(f"\\1{_EXISTS_PLACEHOLDER} {_KS_PLACEHOLDER}\\3", statement)
 
 
-def clone_list_keyspaces(hosts: list[str], port: int, username: str | None, password: str | None) -> None:
+def clone_list_keyspaces(*, hosts: list[str], port: int, username: str | None, password: str | None) -> None:
     """List keyspaces that exist in the cluster.
 
     Parameters
@@ -95,11 +99,18 @@ def clone_list_keyspaces(hosts: list[str], port: int, username: str | None, pass
     password : `str` or `None`
         Cassandra password.
     """
-    asyncio.run(_list_keyspaces(hosts=hosts, port=port, username=username, password=password))
+    _list_keyspaces(hosts=hosts, port=port, username=username, password=password)
 
 
 def clone_dump_keyspace(
-    keyspace: str, destination: str, hosts: list[str], port: int, username: str | None, password: str | None
+    *,
+    keyspace: str,
+    destination: str,
+    hosts: list[str],
+    port: int,
+    username: str | None,
+    password: str | None,
+    jobs: int,
 ) -> None:
     """Dump keyspace schema and data to a specified directory.
 
@@ -117,6 +128,8 @@ def clone_dump_keyspace(
         Cassandra user name.
     password : `str` or `None`
         Cassandra password.
+    jobs : `int`
+        Number of concurrent jobs.
     """
     asyncio.run(
         _dump_keyspace(
@@ -126,19 +139,23 @@ def clone_dump_keyspace(
             port=port,
             username=username,
             password=password,
+            jobs=jobs,
         )
     )
 
 
 def clone_load_keyspace(
+    *,
     keyspace: str,
     folder: str,
     hosts: list[str],
     port: int,
     username: str | None,
     password: str | None,
-    tables_to_load: list[str],
+    table_patterns: list[str],
     skip_existing_tables: bool,
+    jobs: int,
+    max_concurrent_queries: str | None,
     dry_run: bool,
 ) -> None:
     """Load keyspace data from a specified directory.
@@ -157,11 +174,16 @@ def clone_load_keyspace(
         Cassandra user name.
     password : `str` or `None`
         Cassandra password.
-    tables_to_load : `list` [`str`]
-        List of tables to load, if empty then all tables will be loaded.
+    table_patterns : `list` [`str`]
+        List of patterns, tables will be loaded if the matcgh one of the
+        patterns, if empty then all tables will be loaded.
     skip_existing_tables : `bool`
         If `True` then loading will be skipped for the tables that already
         exist in the keyspace.
+    jobs : `int`
+        Number of concurrent jobs.
+    max_concurrent_queries : `str` or `None`
+        Limit number of concurrent queries.
     dry_run : `bool`
         If `True` print actions but do not restore.
     """
@@ -173,14 +195,16 @@ def clone_load_keyspace(
             port=port,
             username=username,
             password=password,
-            tables_to_load=tables_to_load,
+            table_patterns=table_patterns,
             skip_existing_tables=skip_existing_tables,
+            jobs=jobs,
+            max_concurrent_queries=max_concurrent_queries,
             dry_run=dry_run,
         )
     )
 
 
-async def _list_keyspaces(*, hosts: list[str], port: int, username: str | None, password: str | None) -> None:
+def _list_keyspaces(*, hosts: list[str], port: int, username: str | None, password: str | None) -> None:
     with _make_cluster(hosts, port, username, password) as cluster:
         with cluster.connect() as session:
             query = "SELECT keyspace_name, replication FROM system_schema.keyspaces"
@@ -196,7 +220,14 @@ async def _list_keyspaces(*, hosts: list[str], port: int, username: str | None, 
 
 
 async def _dump_keyspace(
-    keyspace: str, destination: str, hosts: list[str], port: int, username: str | None, password: str | None
+    *,
+    keyspace: str,
+    destination: str,
+    hosts: list[str],
+    port: int,
+    username: str | None,
+    password: str | None,
+    jobs: int,
 ) -> None:
     # Need dsbulk, check that it can be found.
     _check_dsbulk()
@@ -231,25 +262,51 @@ async def _dump_keyspace(
                 json.dump(schema, out)
             manifest.append("schema.json")
 
-    for table in tables:
-        file_name = _dump_table(
-            host=hosts[0],
-            port=port,
-            keyspace=keyspace,
-            table=table,
-            destination=destination,
-            username=username,
-            password=password,
-        )
-        manifest.append(file_name)
+    t0 = time.time()
+
+    n_tasks = max(jobs, 1)
+    tasks: list[asyncio.Task] = []
+    exceptions = []
+    while True:
+        while tables and len(tasks) < n_tasks:
+            task = asyncio.create_task(
+                _dump_table(
+                    host=hosts[0],
+                    port=port,
+                    keyspace=keyspace,
+                    table=tables.pop(0),
+                    destination=destination,
+                    username=username,
+                    password=password,
+                )
+            )
+            tasks.append(task)
+        if not tasks:
+            break
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        tasks = list(pending)
+        for task in done:
+            if exc := task.exception():
+                exceptions.append(exc)
+            else:
+                file_name = await task
+                manifest.append(file_name)
+
+    if exceptions:
+        raise BaseExceptionGroup("One or more operations failed", exceptions)
 
     # Finally write manifest, it is a marker that dump is complete.
     with open(os.path.join(destination, "manifest.txt"), "w") as out:
-        for name in manifest:
+        for name in sorted(manifest):
             print(name, file=out)
 
+    t1 = time.time()
 
-def _dump_table(
+    _LOG.info("Total time for dump: %.2f sec", t1 - t0)
+
+
+async def _dump_table(
+    *,
     host: str,
     port: int,
     keyspace: str,
@@ -293,32 +350,38 @@ def _dump_table(
     _LOG.info("Dumping table %s to file %s", table, output_path)
     try:
         fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_DIRECT)
-        try:
-            dsbulk = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            gzip = subprocess.Popen(("gzip", "-9"), stdin=dsbulk.stdout, stdout=fd)
-            if dsbulk.stdout:
-                dsbulk.stdout.close()
-            gzip.wait()
-        except Exception as exc:
-            raise RuntimeError(f"Failed to execute dsbulk unload: {exc}") from None
+        file_obj = os.fdopen(fd, "wb")
     except Exception as exc:
-        raise RuntimeError(f"Failed to open output file: {exc}") from None
+        raise RuntimeError(f"Failed to open output file: {exc}") from exc
+    try:
+        shell_cmd = shlex.join(cmd) + " | gzip -9"
+        dsbulk = await asyncio.create_subprocess_shell(
+            shell_cmd, stdin=asyncio.subprocess.DEVNULL, stdout=file_obj
+        )
+        returncode = await dsbulk.wait()
+        if returncode != 0:
+            raise RuntimeError(f"Failed to execute dsbulk for table {table}: return code = {returncode}")
+    except Exception as exc:
+        raise RuntimeError(f"Failed to execute dsbulk unload for table {table}: {exc}") from exc
     finally:
-        if fd is not None:
-            os.close(fd)
+        file_obj.close()
 
+    _LOG.info("Finished dumping table %s", table)
     return output_file
 
 
 async def _load_keyspace(
+    *,
     keyspace: str,
     folder: str,
     hosts: list[str],
     port: int,
     username: str | None,
     password: str | None,
-    tables_to_load: list[str],
+    table_patterns: list[str],
     skip_existing_tables: bool,
+    jobs: int,
+    max_concurrent_queries: str | None,
     dry_run: bool,
 ) -> None:
     # Need dsbulk, check that it can be found.
@@ -342,13 +405,25 @@ async def _load_keyspace(
         if not schema:
             raise ValueError("Empty dictionary found in schema.json.")
 
+    options = []
+    if max_concurrent_queries is not None:
+        options.append(f"{max_concurrent_queries=}")
+    if options:
+        _LOG.info("Using restore options %s", " ".join(options))
+
     # Check that all explicitly requested tables exist in the dump.
-    if tables_to_load:
-        if extra := (set(tables_to_load) - set(schema)):
-            raise ValueError(f"Tables {extra} do not exist in the dump.")
+    if table_patterns:
+        tables_to_load = []
+        for pattern in table_patterns:
+            if matching_tables := fnmatch.filter(schema, pattern):
+                tables_to_load += matching_tables
+            else:
+                raise ValueError(f"Pattern {pattern!r} does not match any table name.")
+        tables_to_load = sorted(set(tables_to_load))
     else:
         tables_to_load = sorted(schema)
 
+    exceptions = []
     with _make_cluster(hosts, port, username, password) as cluster:
         with cluster.connect() as session:
             query = "SELECT keyspace_name FROM system_schema.keyspaces where keyspace_name ='%s'"
@@ -368,12 +443,10 @@ async def _load_keyspace(
                     "use --skip-existing-tables option if you want to avoid restoring them."
                 )
 
+            # Create all tables first.
             for table in tables_to_load:
-
                 if skip_existing_tables and table in existing_tables:
-                    _LOG.info("Table %s already exists, skipping.", table)
                     continue
-
                 # Generate table schema and create the table.
                 _LOG.info("Creating table %s", table)
                 if not dry_run:
@@ -381,20 +454,53 @@ async def _load_keyspace(
                     table_ddl = table_schema_template.substitute(KEYSPACE=keyspace, IF_NOT_EXISTS="")
                     session.execute(table_ddl, timeout=600.0)
 
-                # Load the data.
-                _load_table(
-                    host=hosts[0],
-                    port=port,
-                    keyspace=keyspace,
-                    table=table,
-                    folder=folder,
-                    username=username,
-                    password=password,
-                    dry_run=dry_run,
-                )
+            t0 = time.time()
+
+            n_tasks = max(jobs, 1)
+            tasks: list[asyncio.Task] = []
+            while True:
+                while tables_to_load and len(tasks) < n_tasks:
+                    table = tables_to_load.pop(0)
+
+                    if skip_existing_tables and table in existing_tables:
+                        _LOG.info("Table %s already exists, skipping.", table)
+                        continue
+
+                    task = asyncio.create_task(
+                        _load_table(
+                            host=hosts[0],
+                            port=port,
+                            keyspace=keyspace,
+                            table=table,
+                            folder=folder,
+                            username=username,
+                            password=password,
+                            max_concurrent_queries=max_concurrent_queries,
+                            dry_run=dry_run,
+                        )
+                    )
+                    tasks.append(task)
+
+                if not tasks:
+                    break
+
+                done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                tasks = list(pending)
+
+                for task in done:
+                    if exc := task.exception():
+                        exceptions.append(exc)
+
+            t1 = time.time()
+
+            _LOG.info("Total time for restore: %.2f sec", t1 - t0)
+
+    if exceptions:
+        raise BaseExceptionGroup("One or more operations failed", exceptions)
 
 
-def _load_table(
+async def _load_table(
+    *,
     host: str,
     port: int,
     keyspace: str,
@@ -402,6 +508,7 @@ def _load_table(
     folder: str,
     username: str | None,
     password: str | None,
+    max_concurrent_queries: str | None,
     dry_run: bool,
 ) -> None:
     """Dump table contents as CSV file."""
@@ -443,21 +550,25 @@ def _load_table(
         cmd += ["-u", username]
     if password:
         cmd += ["-p", password, "--driver.advanced.auth-provider.class=PlainTextAuthProvider"]
+    if max_concurrent_queries:
+        cmd += ["--engine.maxConcurrentQueries", max_concurrent_queries]
 
     # Run gunzip and pipe its output to dsbulk.
     fd = None
     try:
         fd = os.open(input_path, os.O_RDONLY | os.O_DIRECT)
-        try:
-            gunzip = subprocess.Popen(("gunzip", ), stdin=fd, stdout=subprocess.PIPE)
-            dsbulk = subprocess.Popen(cmd, stdin=gunzip.stdout)
-            if gunzip.stdout:
-                gunzip.stdout.close()
-            dsbulk.wait()
-        except Exception as exc:
-            raise RuntimeError(f"Failed to execute dsbulk load: {exc}") from None
     except Exception as exc:
-        raise RuntimeError(f"Failed to open output file: {exc}") from None
+        raise RuntimeError(f"Failed to open input file: {exc}") from None
+
+    try:
+        shell_cmd = "gunzip |" + shlex.join(cmd)
+        dsbulk = await asyncio.create_subprocess_shell(shell_cmd, stdin=fd)
+        returncode = await dsbulk.wait()
+        if returncode != 0:
+            raise RuntimeError(f"Failed to execute dsbulk for table {table}: return code = {returncode}")
+    except Exception as exc:
+        raise RuntimeError(f"Failed to execute dsbulk load for table {table}: {exc}") from None
     finally:
-        if fd is not None:
-            os.close(fd)
+        os.close(fd)
+
+    _LOG.info("Finished restoring table %s", table)
