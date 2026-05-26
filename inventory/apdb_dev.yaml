@@ -10,10 +10,10 @@ apdb_dev_rack1:
   hosts:
     sdfk8sk010:
       ansible_host: sdfk8sk010.sdf.slac.stanford.edu
-      cassandra_seed: true
     sdfk8sk011:
       ansible_host: sdfk8sk011.sdf.slac.stanford.edu
     sdfk8sk012:
       ansible_host: sdfk8sk012.sdf.slac.stanford.edu
+      cassandra_seed: true
   vars:
     node_rack: "rack-1"
