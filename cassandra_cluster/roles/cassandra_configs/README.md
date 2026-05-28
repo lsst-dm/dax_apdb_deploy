@@ -1,38 +1,62 @@
-Role Name
-=========
+cassandra_configs
+=================
 
-A brief description of the role goes here.
+This role generates configuration files for Cassandra.
+Files are generated locally by downloading Cassandra source tarball, extracting configuration files from it, and patching those files.
+Generated files are store in a local cache directory (`.cache/cassandra-cassandra-{version}/conf/`).
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- Internet access for downloading tarball (unless `cassandra_configs_download_url` variable is redefined).
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+The role uses variables defined elsewhere:
+
+- `cassandra_version` - Cassandra version number (e.g. `4.10.0`).
+- `local_cache` - filesystem directory path on local host used to cache downloaded and generated files.
+- `group_local_cache` - filesystem directory path on local host  used to cache group-specific generated files.
+- `use_password` - boolean specifying whether Cassandra will use password authentication.
+
+Role default variables:
+
+- `cassandra_configs_tar` - name of the source tarball, default: `cassandra-{{ cassandra_version }}.tar.gz`.
+- `cassandra_configs_download_url` - URL for downloading source tarball, default: `https://github.com/apache/cassandra/archive/refs/tags/{{ cassandra_configs_tar }}`.
+- `cassandra_configs_conf_in_tar` - path to the config directory in tarball, default: `cassandra-cassandra-{{ cassandra_version }}/conf`.
+- `cassandra_configs_unpacked_conf` - directory where config files are unpacked, default: `{{ local_cache }}/{{ cassandra_configs_conf_in_tar }}`.
+- `num_tokens` - number of tokens per Cassandra node, default: 4.
+
+⚠️ NOTE:
+Role tasks use hardcoded names for configuration files, and one of the files include JVM version number (e.g. `jvm11-server.options`).
+When `cassandra_version` changes it may be necessary to update file name in `tasks/main.yml`.
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Only `ansible.builtin` and `ansible.posix`.
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+A typical example of role use:
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+- name: "Generate config files on local host"
+  hosts: "{{ ansible_play_hosts[0] }}"
+  serial: 1
+  gather_facts: false
+  roles:
+    - cassandra_configs
 
 License
 -------
 
-BSD
+GNU General Public License v3.0 or later.
+
+See LICENCING to see the full text.
 
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Managed by LSST DM team: https://github.com/lsst-dm/dax_apdb_deploy

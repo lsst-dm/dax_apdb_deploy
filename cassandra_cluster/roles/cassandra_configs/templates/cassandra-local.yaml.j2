@@ -4,7 +4,7 @@
 
 # Cassandra will listen_address in any case internally, but for medusa we
 # need the name of the host (not localhost) here. This file is first processed
-# locally and then we do another transform when copying it to remote, thios is
+# locally and then we do another transform when copying it to remote, this is
 # why "raw" is here.
 listen_address: '"{% raw %}{{ ansible_host }}{% endraw %}"'
 
