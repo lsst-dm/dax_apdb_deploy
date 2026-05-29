@@ -12,21 +12,27 @@ Requirements
 Role Variables
 --------------
 
-Role default variables:
+`defaults/main.yaml` variables:
 
-- `jolokia_download_tar` - name of the tarball to download, default: `jolokia-{{ jolokia_version }}-bin.tar.gz`.
-- `jolokia_download_url` - URL for downloading Jolokia tarball: `https://github.com/jolokia/jolokia/releases/download/v{{ jolokia_version }}/{{ jolokia_download_tar }}`.
-- `jolokia_download_agent_path` - path of the Jolokia agent in the tarball: `jolokia-{{ jolokia_version }}/agents/jolokia-jvm.jar`
-- `jolokia_download_jar` - name of the Jolokia agent JAR in local cache: `jolokia-jvm-{{ jolokia_version }}.jar`.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `jolokia_download_tar` | name of the tarball to download | `jolokia-{{ jolokia_version }}-bin.tar.gz` |
+| `jolokia_download_url` | URL for downloading Jolokia tarball | `https://github.com/jolokia/jolokia/releases/download/v{{ jolokia_version }}/{{ jolokia_download_tar }}` |
+| `jolokia_download_agent_path` | path of the Jolokia agent in the tarball | `jolokia-{{ jolokia_version }}/agents/jolokia-jvm.jar` |
+| `jolokia_download_jar` | name of the Jolokia agent JAR in local cache | `jolokia-jvm-{{ jolokia_version }}.jar` |
+
+The role uses variables defined elsewhere:
+
+| Variable | Description |
+|----------|-------------|
+| `need_jolokia` | boolean, if false then the role does not do anything |
+| `jolokia_version` | Jolokia version string |
+| `local_cache` | filesystem directory path on local host used to cache downloaded and generated files |
 
 Dependencies
 ------------
 
-The role uses variables defined elsewhere:
-
-- `need_jolokia` - boolean, if false then the role does not do anything.
-- `jolokia_version` - Jolokia version string.
-- `local_cache` - filesystem directory path on local host used to cache downloaded and generated files.
+None.
 
 Example Playbook
 ----------------

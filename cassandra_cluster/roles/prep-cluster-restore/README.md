@@ -28,18 +28,29 @@ Vault should be authenticated with `vault login`.
 Role Variables
 --------------
 
-- `deploy_folder` - location for installation of all deployment tools, usually set in group vars.
-- `deploy_docker_folder` - location of the docker-based deployment.
-- `cassandra_version` - usually set in group vars.
-- `medusa_venv` - location of the virtual environment for `cassandra-medusa`, default is `{{ deploy_folder }}/medusa-venv`.
-- `cassandra_download_uri` - URL to download Cassandra binary package, default should be OK, it depends on `cassandra_version`.
-- `backup_storage_provider`
-- `backup_bucket_name`
-- `backup_prefix`
-- `backup_transfer_max_bandwidth`
-- `backup_concurrent_transfers`
-- `backup_s3_host`
-- `backup_s3_port`
+`defaults/main.yaml` variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `medusa_venv` | location of the virtual environment for `cassandra-medusa` | `{{ deploy_folder }}/medusa-venv` |
+| `cassandra_download_uri` | URL to download Cassandra binary package, default should be OK, it depends on `cassandra_version` ||
+
+These variables need to be set to use this role:
+
+| Variable | Description |
+|----------|-------------|
+| `deploy_folder` | location for installation of all deployment tools, usually set in group vars |
+| `deploy_docker_folder` | location of the docker-based deployment |
+| `cassandra_version` | usually set in group vars |
+| `backup_storage_provider` | Same as in `medusa_configs` role |
+| `backup_bucket_name` | Same as in `medusa_configs` role |
+| `backup_prefix` | Same as in `medusa_configs` role |
+| `backup_transfer_max_bandwidth` | Same as in `medusa_configs` role |
+| `backup_concurrent_transfers` | Same as in `medusa_configs` role |
+| `backup_s3_host` | Same as in `medusa_configs` role |
+| `backup_s3_port` | Same as in `medusa_configs` role |
+| `http_proxy` | If needed |
+| `https_proxy` | If needed |
 
 Dependencies
 ------------
@@ -55,7 +66,6 @@ Example Playbook
 
       roles:
         - prep-cluster-restore
-
 
 License
 -------

@@ -12,17 +12,31 @@ As this role uses `make_credentials` role, its requirements needs to be satisfie
 Role Variables
 --------------
 
-Role default variables:
+`defaults/main.yaml` variables:
 
-- `backup_storage_provider` - Storage provider for medusa: default `s3_compatible`.
-- `backup_bucket_name` - S3 bucket name, needs to be set.
-- `backup_aws_key_file` - path to S3 credentials in medusa container, name is determined by docker-compose.yaml secrets for medusa service, default: `/run/secrets/medusa-minio-credentials`.
-- `backup_hashi_vault_aws_path` - path to S3 credentials in Hashi Vault, needs to be set.
-- `backup_prefix` - Additional prefix for backups, default: empty.
-- `backup_transfer_max_bandwidth` - Max bandwidth for backup transfers (for each node), default: `512MiB`.
-- `backup_concurrent_transfers` - umber of concurrent transfers, default: 3.
-- `backup_s3_host` - name of the S3 backup host, needs to be set.
-- `backup_s3_port` - port number for S3 service, needs to be set.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `backup_storage_provider` | Storage provider for medusa | `s3_compatible` |
+| `backup_aws_key_file` | path to S3 credentials in medusa container, name is determined by docker-compose.yaml secrets for medusa service | `/run/secrets/medusa-minio-credentials` |
+| `backup_transfer_max_bandwidth` | Max bandwidth for backup transfers (for each node) | `512MiB` |
+| `backup_concurrent_transfers` | umber of concurrent transfers | 3 |
+
+These variables need to be set to use this role:
+| Variable | Description |
+|----------|-------------|
+| `backup_bucket_name` | S3 bucket name, needs to be set |
+| `backup_hashi_vault_aws_path` | path to S3 credentials in Hashi Vault, needs to be set |
+| `backup_prefix` | Additional prefix for backups, default: empty |
+| `backup_s3_host` | name of the S3 backup host, needs to be set |
+| `backup_s3_port` | port number for S3 service, needs to be set |
+
+The role uses variables defined elsewhere:
+
+| Variable | Description |
+|----------|-------------|
+| `use_backups` | boolean specifying whether medusa is needed |
+| `cassandra_user_uid` | UID for the account used to run Medusa service in Docker container |
+| `deploy_docker_folder` | location of the deployment folder on remote hosts |
 
 Dependencies
 ------------
@@ -30,12 +44,6 @@ Dependencies
 Roles used by this role:
 
 - `make_credentials`
-
-The role uses variables defined elsewhere:
-
-- `use_backups` - boolean specifying whether medusa is needed.
-- `cassandra_user_uid` - UID for the account used to run Medusa service in Docker container.
-- `deploy_docker_folder` - location of the deployment folder on remote hosts.
 
 Example Playbook
 ----------------
