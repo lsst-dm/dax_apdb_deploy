@@ -2,33 +2,35 @@ make_credentials
 ================
 
 This role can extract various types of credentials from potentially multiple sources.
-For now only Hashi Vault is supported as a sources.
-
-
+For now only Hashi Vault is supported as a source.
 
 Requirements
 ------------
 
 If using Hashi Vault:
 
-- Vault is authenticated with `vault login`.
+- `VAULT_ADDR` environment variable has to be set to the URL of the Vault.
+- Vault needs to be authenticated with `vault login`.
 - `hashi_vault` module depends on `hvac` Python module.
 - The role is executed on local host.
 
 Role Variables
 --------------
 
-- `credentials_source` - credential source. Set to "hashi_vault" to use Hashi Vault.
+Role default variables:
+
+- `credentials_source` - credential source. Not set by default, set it to "hashi_vault" to use Hashi Vault.
 - `credentials_account` - type of credentials to extract, can be one of:
   - "cassandra_user" to return credential for Cassandra regular user,
   - "cassandra_super" to return credential for Cassandra superuser,
   - "backup_s3" to return credential for S3 bucket used for backups.
-- `credentials_var` - name of the variable that will contain resulting credentials, by default `credentials`.
+- `credentials_var` - name of the variable that will contain resulting credentials, default: `credentials`.
 
 When `credentials_source` is set to "hashi_vault" these variables are used:
 
-- `hashi_vault_user_path` - path of the secret for Cassandra regular user account. Secret has to define `username` and `password` attributes.
-- `hashi_vault_super_path` - path of the secret for Cassandra superuser account. Secret has to define `username` and `password` attributes.
+- `hashi_vault_mount_point` - Vault mount point for credentials, default: `secret`.
+- `hashi_vault_user_path` - path of the secret for Cassandra regular user account. Secret has to define `username` or `user`, and `password` attributes.
+- `hashi_vault_super_path` - path of the secret for Cassandra superuser account. Secret has to define `username` or `user`, and `password` attributes.
 - `backup_hashi_vault_aws_path` - path of the secret for S3 bucket.  Secret has to define `access_key` and `secret_key` attributes.
 
 When credentials are successfully extracted the role sets a variable whose name is defined by `credentials_var` to an object with two attributes:
@@ -39,7 +41,10 @@ When credentials are successfully extracted the role sets a variable whose name 
 Dependencies
 ------------
 
+Roles used by this role:
+
 - `community.hashi_vault.vault_kv2_get` module (when `credentials_source` is set to "hashi_vault")
+
 
 Example Playbook
 ----------------

@@ -1,3 +1,31 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for roles/medusa_configs
+
+# Storage provider for medusa.
+backup_storage_provider: s3_compatible
+
+# S3 bucket name.
+backup_bucket_name:
+
+# Path to S3 credentials in medusa container, name is determined by
+# docker-compose.yaml secrets fro medusa service.
+backup_aws_key_file: /run/secrets/medusa-minio-credentials
+
+# Path to S3 credentials in Hashi Vault, needs to be set.
+backup_hashi_vault_aws_path:
+
+# Additional prefix for backups.
+backup_prefix:
+
+# Max bandwidth for backup transfers (for each node).
+backup_transfer_max_bandwidth: 512MiB
+
+# Number of concurrent transfers.
+backup_concurrent_transfers: 3
+
+# Name of the S3 backup host.
+backup_s3_host:
+
+# Port number for S3 service.
+backup_s3_port:
