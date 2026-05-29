@@ -1,38 +1,57 @@
 Role Name
 =========
 
-A brief description of the role goes here.
+This role installs configuration files and scripts for telegraf service that collect additional metrics from Cassandra cluster.
+New files are installed only if `/etc/telegraf/telegraf.d` directory exists on remote host.
+
+Following files are installed:
+- `/etc/telegraf/telegraf.d/90-cassandra.conf` - collects metrics from JVM and Cassandra using Jolokia agent.
+- `/etc/telegraf/telegraf.d/cassandra-metrics-rename.py` - filter script used by above config file to normalize metrics names.
+- `/etc/telegraf/telegraf.d/90-zfs.conf` - collects metrics from ZFS.
+- `/etc/telegraf/telegraf.d/zpool-health.py` - script used by above config file to generate additional metrics for ZFS health.
+
+If any of the files are updated then telegraf service is restarted.
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+The role requires sudo privileges.
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+`defaults/main.yaml` variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `telegraf_config_path` | location of telegraf config files | `/etc/telegraf/telegraf.d` |
+
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+None.
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+A typical example of role use:
 
-    - hosts: servers
+    - name: "Configure telegraf"
+      hosts: "{{ ansible_play_hosts }}"
+      gather_facts: false
+      become: true
       roles:
-         - { role: username.rolename, x: 42 }
+        - telegraf
 
 License
 -------
 
-BSD
+GNU General Public License v3.0 or later.
+
+See LICENCING to see the full text.
 
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Managed by LSST DM team: https://github.com/lsst-dm/dax_apdb_deploy

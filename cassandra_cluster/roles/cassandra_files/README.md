@@ -56,13 +56,13 @@ The role uses variables defined elsewhere:
 Example Playbook
 ----------------
 
-A typical example of role use:
+    A typical example of role use:
 
-- name: "Copy files to remote nodes"
-  hosts: all
-  gather_facts: false
-  roles:
-    - cassandra_files
+    - name: "Copy files to remote nodes"
+      hosts: all
+      gather_facts: false
+      roles:
+        - cassandra_files
 
 License
 -------

@@ -33,12 +33,12 @@ Example Playbook
 
 A typical example of role use:
 
-- name: "Generate config files on local host"
-  hosts: "{{ ansible_play_hosts[0] }}"
-  serial: 1
-  gather_facts: false
-  roles:
-    - jolokia_download
+    - name: "Generate config files on local host"
+      hosts: "{{ ansible_play_hosts[0] }}"
+      serial: 1
+      gather_facts: false
+      roles:
+        - jolokia_download
 
 License
 -------

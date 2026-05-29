@@ -40,12 +40,12 @@ Example Playbook
 
 A typical example of role use:
 
-- name: "Generate config files on local host"
-  hosts: "{{ ansible_play_hosts[0] }}"
-  serial: 1
-  gather_facts: false
-  roles:
-    - cassandra_configs
+    - name: "Generate config files on local host"
+      hosts: "{{ ansible_play_hosts[0] }}"
+      serial: 1
+      gather_facts: false
+      roles:
+        - cassandra_configs
 
 License
 -------

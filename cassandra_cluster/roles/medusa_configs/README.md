@@ -42,11 +42,11 @@ Example Playbook
 
 A typical example of role use:
 
-- name: "Copy files to remote nodes"
-  hosts: all
-  gather_facts: false
-  roles:
-    - medusa_configs
+    - name: "Copy files to remote nodes"
+      hosts: all
+      gather_facts: false
+      roles:
+        - medusa_configs
 
 License
 -------
