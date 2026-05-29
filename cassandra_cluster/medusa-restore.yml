@@ -1,7 +1,7 @@
 # Playbook for restoring Cassandra cluster from backup
 ---
 
-- name: "Restore clsuter from backup"
+- name: "Restore cluster from backup"
   hosts: all
   gather_facts: false
 

@@ -60,7 +60,7 @@ Roles used by this role:
 Example Playbook
 ----------------
 
-    A typical example of role use:
+A typical example of role use:
 
     - name: "Copy files to remote nodes"
       hosts: all
