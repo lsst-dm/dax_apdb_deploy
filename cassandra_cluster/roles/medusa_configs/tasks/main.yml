@@ -38,23 +38,23 @@
         dest: "{{ deploy_docker_folder }}/medusa.ini"
         mode: "644"
 
-- name: "Copy cassandra credentials to the host."
-  when: use_password
-  block:
+    - name: "Copy cassandra credentials to the host."
+      when: use_password
+      block:
 
-    - name: "Retrieve Cassandra credentials"
-      import_role:
-        name: make_credentials
-      vars:
-        credentials_account: "cassandra_super"
-        credentials_var: super_credentials
+        - name: "Retrieve Cassandra credentials"
+          import_role:
+            name: make_credentials
+          vars:
+            credentials_account: "cassandra_super"
+            credentials_var: super_credentials
 
-    - ansible.builtin.set_fact:
-        cassandra_super_username: "{{ super_credentials.username }}"
-        cassandra_super_password: "{{ super_credentials.password }}"
+        - ansible.builtin.set_fact:
+            cassandra_super_username: "{{ super_credentials.username }}"
+            cassandra_super_password: "{{ super_credentials.password }}"
 
-    - name: "Copy Cassandra secret to cluster"
-      ansible.builtin.template:
-        src: "medusa-cassandra-credentials.env.j2"
-        dest: "{{ deploy_docker_folder }}/medusa-cassandra-credentials.env"
-        mode: 0o600
+        - name: "Copy Cassandra secret to cluster"
+          ansible.builtin.template:
+            src: "medusa-cassandra-credentials.env.j2"
+            dest: "{{ deploy_docker_folder }}/medusa-cassandra-credentials.env"
+            mode: 0o600
