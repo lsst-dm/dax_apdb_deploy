@@ -8,7 +8,7 @@
 
   tasks:
     - name: "Bring up seed hosts"
-      ansible.builtin.import_tasks: up_tasks/up-seed.yml
+      ansible.builtin.import_tasks: up_tasks/up-node.yml
       when: hostvars[inventory_hostname].cassandra_seed | default(false)
 
 - name: "Bring up non-seed hosts"
