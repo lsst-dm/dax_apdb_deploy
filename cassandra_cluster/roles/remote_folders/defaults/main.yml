@@ -1,3 +1,9 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for roles/remote_folders
+
+# Default location for deployment tools.
+deploy_folder: "{{ ansible_env.HOME }}/apdb_deploy"
+
+# Location for all docker-compose things.
+deploy_docker_folder: "{{ deploy_folder }}/docker"

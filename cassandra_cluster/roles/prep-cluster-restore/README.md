@@ -17,6 +17,10 @@ Here are the steps that this role performs:
 
 The `medusa cluster-restore` command should use `--config-file={{ deploy_folder }}/cluster-restore/medusa.ini` option, plus all other.
 
+⚠️ NOTE: This role is unlikely to be of any practical use.
+`medusa cluster-restore` will fail if Cassandra schema had some columns dropped over its lifetime.
+More reliable way to handle restore to a different topology is to use `dsbulk`-based tools.
+
 Requirements
 ------------
 

@@ -15,7 +15,7 @@ Requirements
 ------------
 
 - Cluster must be down, both `cassandra` and `medusa` services must be stopped.
-- Data directory must exist, but be empty, it is created by `remote_folders` role or `site-init.yaml` playbook.
+- Data directory must exist, but be empty, it is created by `site-init.yaml` playbook.
 - Both Cassandra, Medusa, and `docker-compose.yaml` configuration files must be up to date, use `site.yaml` playbook for that.
 - If host names of a new cluster differ from the host names in backup, edit inventory and add `restore_from` variable to each node (and remove it after restore).
 
