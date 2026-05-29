@@ -13,13 +13,6 @@ Requirements
 Role Variables
 --------------
 
-The role uses variables defined elsewhere:
-
-- `cassandra_version` - Cassandra version number (e.g. `4.10.0`).
-- `local_cache` - filesystem directory path on local host used to cache downloaded and generated files.
-- `group_local_cache` - filesystem directory path on local host  used to cache group-specific generated files.
-- `use_password` - boolean specifying whether Cassandra will use password authentication.
-
 Role default variables:
 
 - `cassandra_configs_tar` - name of the source tarball, default: `cassandra-{{ cassandra_version }}.tar.gz`.
@@ -35,7 +28,12 @@ When `cassandra_version` changes it may be necessary to update file name in `tas
 Dependencies
 ------------
 
-Only `ansible.builtin` and `ansible.posix`.
+The role uses variables defined elsewhere:
+
+- `cassandra_version` - Cassandra version number (e.g. `4.10.0`).
+- `local_cache` - filesystem directory path on local host used to cache downloaded and generated files.
+- `group_local_cache` - filesystem directory path on local host  used to cache group-specific generated files.
+- `use_password` - boolean specifying whether Cassandra will use password authentication.
 
 Example Playbook
 ----------------

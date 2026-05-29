@@ -19,25 +19,27 @@ Requirements
 Role Variables
 --------------
 
-This role defines a local variable:
+Role default variables:
 
 - `system_auth_rf` - replication factor for `system_auth` keyspace, it is 3 by default which is reasonable for clusters with 3+ nodes.
 
-And it uses a few variables defined at global level:
+Dependencies
+------------
+
+Roles used by this role:
+
+- `community.docker.docker_compose_v2_exec`
+- `community.cassandra.cassandra_cqlsh`
+  - `cqlsh_cmd` needs to be set to the location of `cqlsh` script on remote host (`{{ deploy_docker_folder }}/cqlsh`)
+- `community.hashi_vault.vault_kv2_get`
+
+The role uses variables defined elsewhere:
 
 - `service_name` - Cassandra service name.
 - `deploy_docker_folder` - location of the deployment folder on remote hosts.
 - `hashi_vault_mount_point` - vault mount point (prefix).
 - `hashi_vault_super_path` - path to superuser secret in the Vault relative to the mount point. The secret must have two keys - `username` and `password`.
 - `hashi_vault_user_path` - path to regular user secret in the Vault relative to the mount point.
-
-Dependencies
-------------
-
-- `community.docker.docker_compose_v2_exec`
-- `community.cassandra.cassandra_cqlsh`
-  - `cqlsh_cmd` needs to be set to the location of `cqlsh` script on remote host (`{{ deploy_docker_folder }}/cqlsh`)
-- `community.hashi_vault.vault_kv2_get`
 
 Example Playbook
 ----------------
