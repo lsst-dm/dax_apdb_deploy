@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+#SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for make_credentials
 
@@ -47,5 +47,5 @@
           when: credentials_account != "backup_s3"
           ansible.builtin.set_fact:
             "{{ credentials_var }}":
-              username: "{{ _hashi_vault_response.data.data.username }}"
+              username: "{{ _hashi_vault_response.data.data.username | default(_hashi_vault_response.data.data.user) }}"
               password: "{{ _hashi_vault_response.data.data.password }}"

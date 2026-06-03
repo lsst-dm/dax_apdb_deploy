@@ -28,11 +28,11 @@ Inventories are located in the top level directory of this package.
 
 Execution of ansible playbooks requires passing the name of the inventory file, e.g.:
 
-    ansible-playbook -i ../inventory-apdb_dev.yaml site.yml
+    ansible-playbook -i inventory/apdb_dev.yaml cassandra_cluster/site.yml
 
 One can limit the set of nodes with `-l` option, e.g.:
 
-    ansible-playbook -i ../inventory-apdb_dev.yaml -l sdfk8sk003 site.yaml
+    ansible-playbook -i inventory/apdb_dev.yaml -l sdfk8sk012 cassandra_cluster/site.yaml
 
 Some ansible variables will be specific to a cluster.
 Defaults for this variables are set in the file `cassandra_cluster/group_vars/all.yml`.
@@ -48,8 +48,8 @@ Kerberos authentication is used for connecting to cluster nodes via SSH:
 Some Ansible roles require `root` privileges, but `rubincas` is not allowed to `sudo`.
 To execute such role the user needs to use their own account and be granted `sudo` privileges.
 
-To run Ansible role from user account with sudo one adds `--become --ask-become-pass --user $USER` and optionally `--ask-pass` options to Ansible commands (or short options `-b -K -u $USER` and `-k`).
-Cluster nodes do not have home directories for regular users, but it is possible to create them under existing `/sdf/home` folder and add `.k5login` file to avoid using `--as-pass` options.
+To run Ansible role from user account with sudo one adds `--ask-become-pass --user $USER` and optionally `--ask-pass` options to Ansible commands (or short options `-K -u $USER` and `-k`).
+Cluster nodes do not have home directories for regular users, but it is possible to create them under existing `/sdf/home` folder and add `.k5login` file to avoid using `--ask-pass` options.
 
 
 ## Deployment model
@@ -65,7 +65,7 @@ Deployment of Cassandra on a cluster of hosts includes:
   - Configs are extracted from Cassandra distribution and then patched with necessary overrides.
 - If monitoring is enabled (`use_monitoring` variable), then JAR file for Jolokia is downloaded to local host (same `.cache/` folder).
 - On each cluster host:
-  - Directories are created at a location specified by `deploy_folder` variable.
+  - Directories are created at a location specified by `deploy_folder` and `deploy_folder_docker` variables.
   - Configuration files are copied from `.cache/` to that location, or some subdirectory.
 - If monitoring is enabled:
   - Jolokia JAR file is also copied to each host.
@@ -75,16 +75,12 @@ Deployment of Cassandra on a cluster of hosts includes:
 
 Very first start of the multi-node cluster needs special care:
 
-- It is recommended to bring up seed nodes first, sequentially, one-by-one.
-- Once all seed nodes are up, all other nodes can be started.
+- The nodes have to be brought up one at a time to avoid conflicts in token allocation.
+- Seed nodes have to be brought up first.
 - If authentication is enabled (should be true for any reasonable setup):
   - Using default initial credentials (`cassandra`/`cassandra`) create new super-user account.
   - Using new super-user account delete default `cassandra` account.
-  - Create additional non-super-user accounts, typically allowing them to create keyspaces.
-
-Non-trivial part here is how to realize that bootstrap is needed.
-Potentially we can always start cluster in the same order - first seed nodes sequentially, then all the rest.
-One can check the existence of `cassandra` account to decide whether we need to create other accounts.
+  - Create an additional non-super-user account and allowing it to create keyspaces.
 
 To serialize startup of the seed nodes we need to know when the node is actually up before starting another one.
 The easiest way to do that is to probe native client port `9042` and wait until it responds (with a reasonable timeout).
@@ -92,83 +88,56 @@ The easiest way to do that is to probe native client port `9042` and wait until 
 
 ## Ansible playbooks
 
-Here are existing playbooks that are used to perform above tasks.
+The `cassandra_cluster` directory contains a number of playbooks for cluster management.
+See `cassandra_cluster/README.md` for their detailed description.
 
-### site-init.yaml
-
-This playbook performs one-time initialization of the host.
-It needs to be run once for every new node, but can be executed again if any changes are made to any tasks.
-It requires `sudo` on remote hosts for at least some tasks so it needs to be executed with `-K` option, which will prompt for a password, e.g.:
-
-    ansible-playbook -i <inventory> -K site-init.yml
-
-### site.yaml
-
-This playbook configures each node:
-
-- Downloads and updates Cassandra configuration files.
-- Downloads and updates jolokia plugin if needed.
-- Copies all config files to remote nodes.
-- Copies docker-compose file to remote nodes.
-
-All files are installed in sub-directories in user home directory, no `sudo` access is needed:
-
-    ansible-playbook -i <inventory> site.yml
+Here are examples of management procedures that use playbooks.
 
 
-### up.yaml
+### Bootstrapping a new cluster
 
-This playbook starts Cassandra cluster, bringing up seed nodes first:
+After creating a new inventory file (e.g. `cluster.yaml`) and corresponding group vars (in `cassandra_cluster/group_vars/cluster.yml`) this sequence of commands can be executed:
 
-    ansible-playbook -i <inventory> up.yml
-
-
-### down.yaml
-
-This playbook stops Cassandra cluster in a very clean way:
-
-- Drains each Cassandra node (`nodetool drain`).
-- Stops compaction (`nodetool stop`).
-- Shuts down servers (`nodetool stopdaemon`).
-- Stops docker containers.
+    # Create data directories on all nodes.
+    $ ansible-playbook -i inventory/cluster.yaml -u $USER -K cassandra_cluster/site-init.yml
+    # Install deployment tools.
+    $ ansible-playbook -i inventory/cluster.yaml cassandra_cluster/site.yml
+    # Start the cluster.
+    $ ansible-playbook -i inventory/cluster.yaml cassandra_cluster/bootstrap.yml
+    # Create new Cassandra accounts.
+    $ ansible-playbook -i inventory/cluster.yaml cassandra_cluster/accounts.yml
 
 
-### accounts.yaml
+### Stopping cluster gracefully
 
-Initially Cassandra cluster is initialized with one super-user account (with a well-known password) and an anonymous account.
-This playbook creates new super-user account, then disables old super-user and anonymous accounts, and creates a new user account using credentials from the Vault.
-This playbook needs to be executed once after creating new cluster.
+    $ ansible-playbook -i inventory/cluster.yaml cassandra_cluster/down.yml
 
 
-### nodetool.yaml
+### Bringing cluster up
 
-This playbook executes arbitrary `nodetool` commands on each node.
-The command to execute is passed via `cmd` variable (which needs extra quoting if it contains spaces):
+    $ ansible-playbook -i inventory/cluster.yaml cassandra_cluster/up.yml
 
-    ansible-playbook -i <inventory> -e cmd=info nodetool.yml
 
-Here is how to quote command in case of extra parameters:
+### Rolling restart of Cassandra services
 
-    ansible-playbook -i <inventory> -e cmd='"clearsnapshot --all"' nodetool.yml
-
-An `ansible-pssh` script may be a better interface for `nodetool` for commands that produce output.
+    $ ansible-playbook -i inventory/cluster.yaml cassandra_cluster/rolling-restart.yml
 
 
 ## Executing shell commands
 
 The `ansible-pssh` script can be used to execute arbitrary shell commands on remote nodes.
 It uses Ansible inventory to determine which hosts to use for execution.
-An example of running of asimple command on all hosts:
+An example of running a simple command on all hosts:
 
-    ansible-pssh -i inventory-apdb_dev.yaml "ls -l"
+    ansible-pssh -i inventory/apdb_dev.yaml "ls -l"
 
 A `-d` option can be used to change current working directory to the location of docker-compose configuration, and it also needs `--playbook-dir` option:
 
-    ansible-pssh -i inventory-apdb_dev.yaml -d --playbook-dir=cassandra_cluster "docker compose ps"
+    ansible-pssh -i inventory/apdb_dev.yaml -d --playbook-dir=cassandra_cluster "docker compose ps"
 
 A `-1` option can be specified to limit execution to a single host, first in the inventory list:
 
-    ansible-pssh -i inventory-apdb_dev.yaml -d --playbook-dir=cassandra_cluster -1 "./nodetool status"
+    ansible-pssh -i inventory/apdb_dev.yaml -d --playbook-dir=cassandra_cluster -1 "./nodetool status"
 
 By default `ansible-pssh` waits until execution of all commands completes to print their output.
 A `-f` option can be used to print output of the remote commands as soon as it appears, prefixing each line with the remote host name.
@@ -184,15 +153,15 @@ Backups are stored in S3 bucket, its location is determined by the configuration
 
 To list existing backups:
 
-    medusa-backup -i inventory-apdb_dev.yaml show-backups
+    medusa-backup -i inventory/apdb_dev.yaml show-backups
 
 To create a new backup (`-a` is for async mode):
 
-    medusa-backup -i inventory-apdb_dev.yaml make-backup -a
+    medusa-backup -i inventory/apdb_dev.yaml make-backup -a
 
 To delete a backup:
 
-    medusa-backup -i inventory-apdb_dev.yaml delete-backup <backup-name>
+    medusa-backup -i inventory/apdb_dev.yaml delete-backup <backup-name>
 
 
 ## Restoring backups

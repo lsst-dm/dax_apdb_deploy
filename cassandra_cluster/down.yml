@@ -1,4 +1,4 @@
-# Playbook for installing and initializing Cassandra cluster
+# Playbook for bringing down Cassandra cluster
 ---
 
 - name: "Drain and shutdown all Cassandra nodes"

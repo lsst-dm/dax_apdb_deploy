@@ -22,7 +22,7 @@
 from __future__ import annotations
 
 import argparse
-import os
+import logging
 import random
 
 from ansible import constants as C
@@ -35,6 +35,12 @@ from ansible.utils.display import Display
 from pssh.clients.ssh import ParallelSSHClient, SSHClient
 from pssh.exceptions import Timeout
 from pssh.output import HostOutput
+
+from .utils import locate_basedir
+
+_log_format = "%(levelname)s: %(name)s - %(message)s"
+
+logging.basicConfig(level=logging.WARNING, format=_log_format)
 
 display = Display()
 
@@ -116,18 +122,20 @@ class PsshCLI(CLI):
         # if we are not in the correct directory already. Try to guess where
         # it is.
         if options.chdir_to_docker and not options.basedir:
-            files = os.listdir()
-            if os.path.basename(os.getcwd()) == "cassandra_cluster" and "roles" in files:
-                # We are already there.
-                pass
-            elif "cassandra_cluster" in files and "roles" in os.listdir("cassandra_cluster"):
-                options.basedir = "cassandra_cluster"
-            else:
-                raise AnsibleError("Cannot locate playbook folder, use --playbook-dir to specify basedir.")
-
+            options.basedir = locate_basedir()
         return options
 
-    def run(self) -> None:
+    def run(self) -> int:
+        try:
+            self._run()
+            return 0
+        except SystemExit:
+            raise
+        except BaseException:
+            logging.exception("Execution failed.")
+            return 1
+
+    def _run(self) -> None:
         super().run()
 
         # Initialize needed objects
@@ -139,11 +147,11 @@ class PsshCLI(CLI):
         try:
             hosts = list(self.get_host_list(inventory, cliargs["subset"]))
         except AnsibleError:
-            if context.CLIARGS["subset"]:
+            if cliargs["subset"]:
                 raise
             else:
-                hosts = []
                 display.warning("No hosts matched, nothing to do")
+                return
 
         # just listing hosts?
         if cliargs["listhosts"]:

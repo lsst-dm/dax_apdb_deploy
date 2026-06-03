@@ -13,6 +13,7 @@
 
 - name: "Bring up non-seed hosts"
   hosts: "{{ ansible_play_hosts }}"
+  serial: 1
   gather_facts: false
 
   tasks:
