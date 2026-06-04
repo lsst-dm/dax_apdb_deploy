@@ -17,20 +17,24 @@
         path: "{{ local_cache }}/{{ jolokia_download_jar }}"
       register: jolokia_jar_cache
 
-    - name: "Download Jolokia tarball to local cache"
-      ansible.builtin.get_url:
-        url: "{{ jolokia_download_url }}"
-        dest: "{{ local_cache }}/{{ jolokia_download_tar }}"
-        mode: "644"
+    - name: "Download and Jolokia and extract agent JAR"
+      when: "{{ not jolokia_jar_cache.stat.exists }}"
+      block:
 
-    - name: "Extract Jolokia agent JAR to local filesystem"
-      ansible.builtin.unarchive:
-        src: "{{ local_cache }}/{{ jolokia_download_tar }}"
-        include: ["{{ jolokia_download_agent_path }}"]
-        dest: "{{ local_cache }}"
+        - name: "Download Jolokia tarball to local cache"
+          ansible.builtin.get_url:
+            url: "{{ jolokia_download_url }}"
+            dest: "{{ local_cache }}/{{ jolokia_download_tar }}"
+            mode: "644"
 
-    - name: "Copy JAR to top cache level"
-      ansible.builtin.copy:
-        src: "{{ local_cache }}/{{ jolokia_download_agent_path }}"
-        dest: "{{ local_cache }}/{{ jolokia_download_jar }}"
-        mode: "644"
+        - name: "Extract Jolokia agent JAR to local filesystem"
+          ansible.builtin.unarchive:
+            src: "{{ local_cache }}/{{ jolokia_download_tar }}"
+            include: ["{{ jolokia_download_agent_path }}"]
+            dest: "{{ local_cache }}"
+
+        - name: "Copy JAR to top cache level"
+          ansible.builtin.copy:
+            src: "{{ local_cache }}/{{ jolokia_download_agent_path }}"
+            dest: "{{ local_cache }}/{{ jolokia_download_jar }}"
+            mode: "644"
