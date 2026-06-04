@@ -1,14 +1,26 @@
-- name: "Drain cassandra node"
-  ansible.builtin.command:
-    cmd: "./nodetool drain"
-    chdir: "{{ deploy_docker_folder }}"
+---
 
-- name: "Stop compaction"
-  ansible.builtin.command:
-    cmd: "./nodetool stop"
+- name: "Check whether Cassandra container is up"
+  ansible.builtin.shell: "docker compose ps --services --filter status=running {{ service_name }}"
+  args:
     chdir: "{{ deploy_docker_folder }}"
+  register: container_status
+  changed_when: false
 
-- name: "Stop daemon"
-  ansible.builtin.command:
-    cmd: "./nodetool stopdaemon"
-    chdir: "{{ deploy_docker_folder }}"
+- name: "Gracefully shutdown cassandra"
+  when: container_status.stdout != ""
+  block:
+    - name: "Drain cassandra node"
+      ansible.builtin.command:
+        cmd: "./nodetool drain"
+        chdir: "{{ deploy_docker_folder }}"
+
+    - name: "Stop compaction"
+      ansible.builtin.command:
+        cmd: "./nodetool stop"
+        chdir: "{{ deploy_docker_folder }}"
+
+    - name: "Stop daemon"
+      ansible.builtin.command:
+        cmd: "./nodetool stopdaemon"
+        chdir: "{{ deploy_docker_folder }}"

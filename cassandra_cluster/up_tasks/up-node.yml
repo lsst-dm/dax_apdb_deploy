@@ -1,3 +1,4 @@
+---
 
 - name: "Start Cassandra node"
   community.docker.docker_compose_v2:
