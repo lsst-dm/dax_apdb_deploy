@@ -17,6 +17,7 @@
     - ansible.builtin.set_fact:
         medusa_aws_access_key: "{{ aws_credentials.access_key }}"
         medusa_aws_secret_key: "{{ aws_credentials.secret_key }}"
+      no_log: true
 
     - name: "Copy AWS secret to cluster"
       ansible.builtin.template:
@@ -52,6 +53,7 @@
         - ansible.builtin.set_fact:
             cassandra_super_username: "{{ super_credentials.username }}"
             cassandra_super_password: "{{ super_credentials.password }}"
+          no_log: true
 
         - name: "Copy Cassandra secret to cluster"
           ansible.builtin.template:

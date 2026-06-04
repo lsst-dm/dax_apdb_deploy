@@ -32,6 +32,7 @@
     # plugin instead of module.
     - name: "Ask Vault for credentials"
       when: _hashi_vault_path != ""
+      no_log: true
       block:
         - name: "Ask Vault for credentials"
           ansible.builtin.set_fact:

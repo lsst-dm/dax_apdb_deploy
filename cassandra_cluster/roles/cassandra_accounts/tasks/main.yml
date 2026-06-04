@@ -11,6 +11,7 @@
     tty: false
   register: result
   failed_when: result.rc != 0
+  changed_when: false
 
 # Check if default cassandra/cassandra credentials are still working.
 - name: "Check for default login"
@@ -26,6 +27,9 @@
   when: cqlsh_using_default_login.failed
   ansible.builtin.debug:
     msg: "Default cassandra account is disabled, new accounts probbably exist already."
+
+- meta: end_play
+  when: cqlsh_using_default_login.failed
 
 - name: "Create new Cassandra accounts"
   when: not cqlsh_using_default_login.failed
@@ -46,6 +50,7 @@
         credentials_var: user_credentials
 
     - name: "Create new superuser account"
+      no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "CREATE ROLE {{ super_credentials.username }} WITH PASSWORD = '{{ super_credentials.password }}' AND LOGIN = true AND SUPERUSER = true"
@@ -55,6 +60,7 @@
       failed_when: cqlsh_result.failed
 
     - name: "Create regular user account"
+      no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "CREATE ROLE {{ user_credentials.username }} WITH PASSWORD = '{{ user_credentials.password }}' AND LOGIN = true AND SUPERUSER = false"
