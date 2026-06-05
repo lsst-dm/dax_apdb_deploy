@@ -17,7 +17,7 @@
 # Check that data directory exists.
 - name: Check data directory
   ansible.builtin.stat:
-    path:  "{{ data_dir }}"
+    path: "{{ data_dir }}"
   register: data_dir_stat
 
 - name: Fail if data directory is missing

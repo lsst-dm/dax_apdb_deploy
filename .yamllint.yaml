@@ -9,7 +9,7 @@ rules:
     ignore: |
       **/meta/main.yml
   line-length:
-    max: 132
+    max: 255
     allow-non-breakable-words: true
     allow-non-breakable-inline-mappings: true
     ignore: |

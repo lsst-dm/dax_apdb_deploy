@@ -30,7 +30,7 @@
   ansible.builtin.unarchive:
     src: "{{ cassandra_download_uri }}"
     dest: "{{ deploy_folder }}/cassandra"
-    remote_src: yes
+    remote_src: true
   environment:
     http_proxy: "{{ http_proxy }}"
     https_proxy: "{{ https_proxy }}"

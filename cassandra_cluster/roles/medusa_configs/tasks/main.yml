@@ -18,7 +18,7 @@
       ansible.builtin.template:
         src: "medusa-minio-credentials.j2"
         dest: "{{ deploy_docker_folder }}/medusa-minio-credentials"
-        mode: 0o600
+        mode: "600"
 
     - name: "Set AWS secret ACL"
       ansible.posix.acl:
@@ -49,4 +49,4 @@
           ansible.builtin.template:
             src: "medusa-cassandra-credentials.env.j2"
             dest: "{{ deploy_docker_folder }}/medusa-cassandra-credentials.env"
-            mode: 0o600
+            mode: "600"
