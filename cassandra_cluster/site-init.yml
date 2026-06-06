@@ -39,6 +39,7 @@
         regexp: "^\\* - nproc 32768"
         line: "* - nproc 32768"
         create: true
+        mode: "644"
       when: ansible_facts["os_family"] == "RedHat"
 
     # Copied from community.cassandra.cassandra_linux role.

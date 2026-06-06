@@ -5,10 +5,10 @@
 - name: "Check for telegraf config directory"
   ansible.builtin.stat:
     path: "{{ telegraf_config_path }}"
-  register: etc_telegraf
+  register: telegraf_etc_stat
 
 - name: "Install telegraf configs"
-  when: etc_telegraf.stat.exists
+  when: telegraf_etc_stat.stat.exists
   become: true
   become_method: "ansible.builtin.sudo"
   block:

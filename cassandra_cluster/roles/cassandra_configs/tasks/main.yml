@@ -15,10 +15,10 @@
     - name: "Check cached copy of Cassandra config"
       ansible.builtin.stat:
         path: "{{ cassandra_configs_unpacked_conf }}/cassandra.yaml"
-      register: cassandra_yaml_cache
+      register: cassandra_configs_yaml_cache
 
     - name: "Get cassandra configs"
-      when: not cassandra_yaml_cache.stat.exists
+      when: not cassandra_configs_yaml_cache.stat.exists
       block:
 
         - name: "Download cassandra tarball to local cache"
@@ -44,16 +44,16 @@
 
     - name: "Load cassandra.yaml files"
       ansible.builtin.set_fact:
-        c8_yaml_orig: "{{ lookup('file', cassandra_configs_unpacked_conf + '/cassandra.yaml') }}"
-        c8_yaml_local: "{{ lookup('file', group_local_cache + '/cassandra-local.yaml') }}"
+        __c8_yaml_orig: "{{ lookup('file', cassandra_configs_unpacked_conf + '/cassandra.yaml') }}"
+        __c8_yaml_local: "{{ lookup('file', group_local_cache + '/cassandra-local.yaml') }}"
 
     - name: "Merge cassandra.yaml files"
       ansible.builtin.set_fact:
-        c8_yaml: "{{ c8_yaml_orig | merge_yaml_strings(c8_yaml_local) }}"
+        __c8_yaml: "{{ __c8_yaml_orig | merge_yaml_strings(__c8_yaml_local) }}"
 
     - name: "Save cassandra.yaml.j2 to local cache"
       ansible.builtin.copy:
-        content: "{{ c8_yaml }}"
+        content: "{{ __c8_yaml }}"
         dest: "{{ group_local_cache }}/cassandra-{{ cassandra_version }}.yaml.j2"
         mode: "644"
 

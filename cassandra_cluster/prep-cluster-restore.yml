@@ -6,4 +6,4 @@
   gather_facts: false
 
   roles:
-    - prep-cluster-restore
+    - prep_restore

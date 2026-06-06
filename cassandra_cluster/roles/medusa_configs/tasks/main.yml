@@ -8,11 +8,11 @@
 
     - name: "Ask Vault for AWS secrets"
       delegate_to: localhost
-      import_role:
+      ansible.builtin.import_role:
         name: make_credentials
       vars:
-        credentials_account: "backup_s3"
-        credentials_var: aws_credentials
+        make_credentials_account: "backup_s3"
+        make_credentials_var: aws_credentials
 
     - name: "Copy AWS secret to cluster"
       ansible.builtin.template:
@@ -39,11 +39,11 @@
       block:
 
         - name: "Retrieve Cassandra credentials"
-          import_role:
+          ansible.builtin.import_role:
             name: make_credentials
           vars:
-            credentials_account: "cassandra_super"
-            credentials_var: cassandra_super_credentials
+            make_credentials_account: "cassandra_super"
+            make_credentials_var: cassandra_super_credentials
 
         - name: "Copy Cassandra secret to cluster"
           ansible.builtin.template:

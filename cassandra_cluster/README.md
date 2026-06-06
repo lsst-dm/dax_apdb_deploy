@@ -82,7 +82,7 @@ prep-cluster-restore.yml
 
 This playbook prepares environment on remote nodes for restoring backup data into a cluster with different topology.
 
-See `roles/prep-cluster-restore/README.md` for detailed description of the process and options.
+See `roles/prep_restore/README.md` for detailed description of the process and options.
 Note that restoring to a different topology cluster is not likely to work at all.
 
 rolling-restart.yml

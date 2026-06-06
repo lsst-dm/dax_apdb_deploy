@@ -7,7 +7,7 @@ logs_dir: "/zfspool/cassandra/logs"
 num_tokens: 16
 
 use_password: true
-credentials_source: "hashi_vault"
+make_credentials_source: "hashi_vault"
 hashi_vault_user_path: "rubin/usdf-apdb-prod/apdb-prod"
 hashi_vault_super_path: "rubin/usdf-apdb-prod/cassandra-super"
 hashi_vault_mount_point: "secret"

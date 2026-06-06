@@ -15,10 +15,10 @@
     - name: "Check cached copy of Jolokia agent"
       ansible.builtin.stat:
         path: "{{ local_cache }}/{{ jolokia_download_jar }}"
-      register: jolokia_jar_cache
+      register: jolokia_download_jolokia_jar_cache
 
     - name: "Download and Jolokia and extract agent JAR"
-      when: "{{ not jolokia_jar_cache.stat.exists }}"
+      when: not jolokia_download_jolokia_jar_cache.stat.exists
       block:
 
         - name: "Download Jolokia tarball to local cache"

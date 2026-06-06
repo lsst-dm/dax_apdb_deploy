@@ -2,12 +2,21 @@
 ---
 # tasks file for roles/remote_folders
 
+- name: "Check variables"
+  ansible.builtin.assert:
+    that:
+      - deploy_folder is defined
+      - deploy_docker_folder is defined
+    fail_msg: "'deploy_folder' or 'deploy_docker_folder' are undefined"
+
 - name: "Create folder used by deployment tools"
   ansible.builtin.file:
     path: "{{ deploy_folder }}"
     state: "directory"
+    mode: "750"
 
 - name: "Create folder used by docker tools"
   ansible.builtin.file:
     path: "{{ deploy_docker_folder }}"
     state: "directory"
+    mode: "750"

@@ -21,7 +21,7 @@ Role Variables
 | `cassandra_configs_download_url` | URL for downloading source tarball | `https://github.com/apache/cassandra/archive/refs/tags/{{ cassandra_configs_tar }}` |
 | `cassandra_configs_conf_in_tar` | path to the config directory in tarball | `cassandra-cassandra-{{ cassandra_version }}/conf` |
 | `cassandra_configs_unpacked_conf` | directory where config files are unpacked | `{{ local_cache }}/{{ cassandra_configs_conf_in_tar }}` |
-| `num_tokens` | number of tokens per Cassandra node | 4 |
+| `cassandra_configs_num_tokens` | number of tokens per Cassandra node | 4 |
 
 The role uses variables defined elsewhere:
 

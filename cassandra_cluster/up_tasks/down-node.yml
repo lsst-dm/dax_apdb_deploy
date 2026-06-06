@@ -1,8 +1,8 @@
 ---
 
 - name: "Check whether Cassandra container is up"
-  ansible.builtin.shell: "docker compose ps --services --filter status=running {{ service_name }}"
-  args:
+  ansible.builtin.command:
+    cmd: "docker compose ps --services --filter status=running {{ service_name }}"
     chdir: "{{ deploy_docker_folder }}"
   register: container_status
   changed_when: false
@@ -14,13 +14,16 @@
       ansible.builtin.command:
         cmd: "./nodetool drain"
         chdir: "{{ deploy_docker_folder }}"
+      changed_when: false
 
     - name: "Stop compaction"
       ansible.builtin.command:
         cmd: "./nodetool stop"
         chdir: "{{ deploy_docker_folder }}"
+      changed_when: false
 
     - name: "Stop daemon"
       ansible.builtin.command:
         cmd: "./nodetool stopdaemon"
         chdir: "{{ deploy_docker_folder }}"
+      changed_when: false

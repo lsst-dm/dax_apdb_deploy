@@ -4,16 +4,16 @@
 
 # Source of credentials. If not set then this role does not do anything.
 # Set it to "hashi_vault" to use Hashi Vault.
-credentials_source:
+make_credentials_source:
 
 # Type of the account for which to extract credentials, set it to one of:
 #  - "cassandra_user" to return credential for Cassandra regular user,
 #  - "cassandra_super" to return credential for Cassandra superuser,
 #  - "backup_s3" to return credential for S3 bucket used for backups.
-credentials_account:
+make_credentials_account:
 
 # Mount point for the Hashi Vault secrets.
-hashi_vault_mount_point: "secret"
+make_credentials_hashi_vault_mount_point: "{{ hashi_vault_mount_point | default(secret) }}"
 
 # Name of the variable that contains returned credentials.
-credentials_var: "credentials"
+make_credentials_var: "credentials"

@@ -15,4 +15,4 @@ cassandra_configs_conf_in_tar: "cassandra-cassandra-{{ cassandra_version }}/conf
 cassandra_configs_unpacked_conf: "{{ local_cache }}/{{ cassandra_configs_conf_in_tar }}"
 
 # Default number of tokens per node.
-num_tokens: 4
+cassandra_configs_num_tokens: 4

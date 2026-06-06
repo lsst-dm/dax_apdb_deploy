@@ -35,7 +35,7 @@ use_password: false
 # Specifies where credentials for new Cassandra accounts come from:
 #   - "hashi_vault" to get credentails from HashiCorp Vault.
 #     Using HashiCorp Vault requires $VAULT_ADDR and "vault login".
-credentials_source:
+make_credentials_source:
 
 # Path for regular user credentials in HashiCorp Vault.
 hashi_vault_user_path: ""

@@ -14,5 +14,5 @@
       changed_when: nodetool_output.rc != 0
 
     - name: "Dump nodetool output"
-      debug:
+      ansible.builtin.debug:
         var: nodetool_output.stdout_lines
