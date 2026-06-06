@@ -10,7 +10,7 @@
       ansible.builtin.file:
         path: "{{ group_local_cache }}"
         state: "directory"
-        mode: "755"
+        mode: "0755"
 
     - name: "Check cached copy of Cassandra config"
       ansible.builtin.stat:
@@ -25,7 +25,7 @@
           ansible.builtin.get_url:
             url: "{{ cassandra_configs_download_url }}"
             dest: "{{ local_cache }}/{{ cassandra_configs_tar }}"
-            mode: "644"
+            mode: "0644"
 
         - name: "Extract configs from cassandra tar"
           ansible.builtin.unarchive:
@@ -40,7 +40,7 @@
       ansible.builtin.template:
         src: "cassandra-local.yaml.j2"
         dest: "{{ group_local_cache }}/cassandra-local.yaml"
-        mode: "644"
+        mode: "0644"
 
     - name: "Load cassandra.yaml files"
       ansible.builtin.set_fact:
@@ -55,13 +55,13 @@
       ansible.builtin.copy:
         content: "{{ __c8_yaml }}"
         dest: "{{ group_local_cache }}/cassandra-{{ cassandra_version }}.yaml.j2"
-        mode: "644"
+        mode: "0644"
 
     - name: "Copy jvm-server.options files"
       ansible.builtin.copy:
         src: "{{ cassandra_configs_unpacked_conf }}/{{ item }}.options"
         dest: "{{ group_local_cache }}/{{ item }}-{{ cassandra_version }}.options"
-        mode: "644"
+        mode: "0644"
       loop: ["jvm-server", "jvm11-server"]
 
     - name: "Patch jvm-server.options files"

@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for roles/cassandra_accounts
 
@@ -26,7 +26,7 @@
 - name: "Message about missing account"
   when: cassandra_accounts_using_default_login.failed
   ansible.builtin.debug:
-    msg: "Default cassandra account is disabled, new accounts probbably exist already."
+    msg: "Default cassandra account is disabled, new accounts may exist already."
 
 - name: "Stop if default account does not exist"
   ansible.builtin.meta: end_role
@@ -71,6 +71,7 @@
       failed_when: cassandra_accounts_cqlsh_result.failed
 
     - name: "Allow regular user to create new keyspaces and tables"
+      no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "GRANT CREATE ON ALL KEYSPACES TO {{ user_credentials.username }}"

@@ -33,7 +33,7 @@ logs_dir: /var/log/cassandra
 use_password: false
 
 # Specifies where credentials for new Cassandra accounts come from:
-#   - "hashi_vault" to get credentails from HashiCorp Vault.
+#   - "hashi_vault" to get credentials from HashiCorp Vault.
 #     Using HashiCorp Vault requires $VAULT_ADDR and "vault login".
 make_credentials_source:
 

@@ -1,10 +1,10 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 galaxy_info:
   author: LSST Data Managment team
   description: Create folders on remote hosts.
   license: GPL-3.0-or-later
 
-  min_ansible_version: "2.1"
+  min_ansible_version: "2.14"
 
   galaxy_tags: []
 

@@ -22,7 +22,7 @@ Role Variables
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `make_credentials_var` | name of the variable that will contain resulting credentials | `credentials` |
-| `hashi_vault_mount_point` | Hashi Vault mount point for credentials | `secret` |
+| `make_credentials_hashi_vault_mount_point` | Hashi Vault mount point for credentials | `{{ hashi_vault_mount_point | default('secret') }}` |
 
 These variables need to be set to use this role:
 

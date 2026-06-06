@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # defaults file for make_credentials
 
@@ -13,7 +13,7 @@ make_credentials_source:
 make_credentials_account:
 
 # Mount point for the Hashi Vault secrets.
-make_credentials_hashi_vault_mount_point: "{{ hashi_vault_mount_point | default(secret) }}"
+make_credentials_hashi_vault_mount_point: "{{ hashi_vault_mount_point | default('secret') }}"
 
 # Name of the variable that contains returned credentials.
 make_credentials_var: "credentials"

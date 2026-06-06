@@ -9,6 +9,5 @@ use_password: true
 make_credentials_source: "hashi_vault"
 hashi_vault_user_path: "rubin/usdf-apdb-test/cassandra"
 hashi_vault_super_path: "rubin/usdf-apdb-test/cassandra-super"
-hashi_vault_mount_point: "secret"
 
 use_backups: true

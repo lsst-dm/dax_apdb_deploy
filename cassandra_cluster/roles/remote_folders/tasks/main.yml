@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for roles/remote_folders
 
@@ -13,10 +13,10 @@
   ansible.builtin.file:
     path: "{{ deploy_folder }}"
     state: "directory"
-    mode: "750"
+    mode: "0750"
 
 - name: "Create folder used by docker tools"
   ansible.builtin.file:
     path: "{{ deploy_docker_folder }}"
     state: "directory"
-    mode: "750"
+    mode: "0750"
