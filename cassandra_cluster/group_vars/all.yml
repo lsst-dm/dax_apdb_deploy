@@ -43,7 +43,7 @@ hashi_vault_user_path: ""
 # Path for superuser credentials in HashiCorp Vault.
 hashi_vault_super_path: ""
 
-# Maunt point for HashiCorp Vault.
+# Mount point for HashiCorp Vault.
 hashi_vault_mount_point: "secret"
 
 # Comma-separated set of seed node names from the set of nodes in the play.
