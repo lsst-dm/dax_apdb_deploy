@@ -11,6 +11,7 @@
         cmd: "./nodetool {{ cmd }}"
         chdir: "{{ deploy_docker_folder }}"
       register: nodetool_output
+      changed_when: false
 
     - name: "Dump nodetool output"
       ansible.builtin.debug:
