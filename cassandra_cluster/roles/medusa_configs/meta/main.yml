@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 galaxy_info:
-  author: LSST Data Managment team
+  author: LSST Data Management team
   description: Generate Medusa configuration files and credentials.
   license: GPL-3.0-or-later
 

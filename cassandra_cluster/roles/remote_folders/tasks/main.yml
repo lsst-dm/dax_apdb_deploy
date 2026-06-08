@@ -6,8 +6,10 @@
   ansible.builtin.assert:
     that:
       - deploy_folder is defined
+      - deploy_folder | length > 0
       - deploy_docker_folder is defined
-    fail_msg: "'deploy_folder' or 'deploy_docker_folder' are undefined"
+      - deploy_docker_folder | length > 0
+    fail_msg: "'deploy_folder' and 'deploy_docker_folder' must be defined and non-empty"
 
 - name: "Create folder used by deployment tools"
   ansible.builtin.file:

@@ -88,8 +88,7 @@ Note that restoring to a different topology cluster is not likely to work at all
 rolling-restart.yml
 -------------------
 
-This playbook performs a rolling restart of Cassandra service.
-Medusa (backup) service is not restarted.
+This playbook performs a rolling restart of Cassandra and Medusa services.
 
 Example of running this playbook:
 

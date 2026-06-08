@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 galaxy_info:
-  author: LSST Data Managment team
+  author: LSST Data Management team
   description: Create new accounts in Cassandra cluster.
   license: GPL-3.0-or-later
 
