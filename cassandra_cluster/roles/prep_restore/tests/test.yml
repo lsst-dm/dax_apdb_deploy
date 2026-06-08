@@ -4,4 +4,4 @@
   hosts: localhost
   remote_user: root
   roles:
-    - medusa_configs
+    - prep_restore

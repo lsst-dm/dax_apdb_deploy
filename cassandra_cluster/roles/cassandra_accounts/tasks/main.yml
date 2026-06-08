@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for roles/cassandra_accounts
 
@@ -9,8 +9,9 @@
     command: "cqlsh -v"
     project_src: "{{ deploy_docker_folder }}"
     tty: false
-  register: result
-  failed_when: result.rc != 0
+  register: cassandra_accounts_result
+  failed_when: cassandra_accounts_result.rc != 0
+  changed_when: false
 
 # Check if default cassandra/cassandra credentials are still working.
 - name: "Check for default login"
@@ -19,58 +20,65 @@
     execute: "SHOW HOST"
     username: cassandra
     password: cassandra
-  register: cqlsh_using_default_login
+  register: cassandra_accounts_using_default_login
   ignore_errors: true
 
 - name: "Message about missing account"
-  when: cqlsh_using_default_login.failed
+  when: cassandra_accounts_using_default_login.failed
   ansible.builtin.debug:
-    msg: "Default cassandra account is disabled, new accounts probbably exist already."
+    msg: "Default cassandra account is disabled, new accounts may exist already."
+
+- name: "Stop if default account does not exist"
+  ansible.builtin.meta: end_role
+  when: cassandra_accounts_using_default_login.failed
 
 - name: "Create new Cassandra accounts"
-  when: not cqlsh_using_default_login.failed
+  when: not cassandra_accounts_using_default_login.failed
   block:
 
     - name: "Retrieve Cassandra credentials for superuser"
-      import_role:
+      ansible.builtin.import_role:
         name: make_credentials
       vars:
-        credentials_account: "cassandra_super"
-        credentials_var: super_credentials
+        make_credentials_account: "cassandra_super"
+        make_credentials_var: super_credentials
 
     - name: "Retrieve Cassandra credentials for user"
-      import_role:
+      ansible.builtin.import_role:
         name: make_credentials
       vars:
-        credentials_account: "cassandra_user"
-        credentials_var: user_credentials
+        make_credentials_account: "cassandra_user"
+        make_credentials_var: user_credentials
 
     - name: "Create new superuser account"
+      no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "CREATE ROLE {{ super_credentials.username }} WITH PASSWORD = '{{ super_credentials.password }}' AND LOGIN = true AND SUPERUSER = true"
         username: cassandra
         password: cassandra
-      register: cqlsh_result
-      failed_when: cqlsh_result.failed
+      register: cassandra_accounts_cqlsh_result
+      failed_when: cassandra_accounts_cqlsh_result.failed
 
     - name: "Create regular user account"
+      no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "CREATE ROLE {{ user_credentials.username }} WITH PASSWORD = '{{ user_credentials.password }}' AND LOGIN = true AND SUPERUSER = false"
         username: cassandra
         password: cassandra
-      register: cqlsh_result
-      failed_when: cqlsh_result.failed
+      register: cassandra_accounts_cqlsh_result
+      failed_when: cassandra_accounts_cqlsh_result.failed
 
     - name: "Allow regular user to create new keyspaces and tables"
+      no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
         execute: "GRANT CREATE ON ALL KEYSPACES TO {{ user_credentials.username }}"
         username: cassandra
         password: cassandra
-      register: cqlsh_result
-      failed_when: cqlsh_result.failed
+      register: cassandra_accounts_cqlsh_result
+      failed_when: cassandra_accounts_cqlsh_result.failed
 
     - name: "Disable old superuser account"
       community.cassandra.cassandra_cqlsh:
@@ -78,14 +86,14 @@
         execute: "ALTER ROLE cassandra WITH SUPERUSER = false AND LOGIN = false"
         username: "{{ super_credentials.username }}"
         password: "{{ super_credentials.password }}"
-      register: cqlsh_result
-      failed_when: cqlsh_result.failed
+      register: cassandra_accounts_cqlsh_result
+      failed_when: cassandra_accounts_cqlsh_result.failed
 
     - name: "Update replication factor for system_auth keyspace"
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "ALTER KEYSPACE system_auth WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : {{ system_auth_rf }} }"
+        execute: "ALTER KEYSPACE system_auth WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : {{ cassandra_accounts_system_auth_rf }} }"
         username: "{{ super_credentials.username }}"
         password: "{{ super_credentials.password }}"
-      register: cqlsh_result
-      failed_when: cqlsh_result.failed
+      register: cassandra_accounts_cqlsh_result
+      failed_when: cassandra_accounts_cqlsh_result.failed

@@ -2,13 +2,13 @@
 # Overrides for default values in cassandra.yaml
 #
 
-# Cassandra will listen_address in any case internally, but for medusa we
+# Cassandra will use listen_address in any case internally, but for medusa we
 # need the name of the host (not localhost) here. This file is first processed
 # locally and then we do another transform when copying it to remote, this is
 # why "raw" is here.
 listen_address: '"{% raw %}{{ ansible_host }}{% endraw %}"'
 
-num_tokens: {{ num_tokens }}
+num_tokens: {{ cassandra_configs_num_tokens }}
 
 authenticator: {{ "PasswordAuthenticator" if use_password else "AllowAllAuthenticator" }}
 authorizer: {{ "CassandraAuthorizer" if use_password else "AllowAllAuthorizer" }}

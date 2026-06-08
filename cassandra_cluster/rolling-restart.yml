@@ -1,7 +1,7 @@
 # Playbook for rolling restart of Cassandra cluster
 ---
 
-- name: "Rolling restart of cassandra service"
+- name: "Rolling restart of all services"
   hosts: "{{ ansible_play_hosts }}"
   serial: 1
   gather_facts: false
@@ -11,17 +11,12 @@
     - name: "Stop Cassandra service"
       ansible.builtin.import_tasks: up_tasks/down-node.yml
 
-    - name: "Stop container"
+    - name: "Stop containers"
       community.docker.docker_compose_v2:
         state: absent
-        services: ["{{ service_name }}"]
         project_src: "{{ deploy_docker_folder }}"
         wait: true
         wait_timeout: 60
 
-    - name: "Restart container"
-      community.docker.docker_compose_v2:
-        state: present
-        services: ["{{ service_name }}"]
-        project_src: "{{ deploy_docker_folder }}"
-        wait: true
+    - name: "Restart containers"
+      ansible.builtin.import_tasks: up_tasks/up-node.yml

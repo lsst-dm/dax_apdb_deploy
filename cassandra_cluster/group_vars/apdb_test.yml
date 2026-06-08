@@ -6,9 +6,8 @@ data_dir: "/zfspool/cassandra/apdb-cluster-test"
 logs_dir: "/zfspool/cassandra/logs"
 
 use_password: true
-credentials_source: "hashi_vault"
+make_credentials_source: "hashi_vault"
 hashi_vault_user_path: "rubin/usdf-apdb-test/cassandra"
 hashi_vault_super_path: "rubin/usdf-apdb-test/cassandra-super"
-hashi_vault_mount_point: "secret"
 
 use_backups: true

@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for roles/cassandra_files
 
@@ -6,13 +6,13 @@
   ansible.builtin.template:
     src: "docker-compose.yml.j2"
     dest: "{{ deploy_docker_folder }}/docker-compose.yml"
-    mode: "644"
+    mode: "0644"
 
 - name: "Copy entrypoint file"
   ansible.builtin.copy:
     src: "entrypoint-wrapper.sh"
     dest: "{{ deploy_docker_folder }}/entrypoint-wrapper.sh"
-    mode: "755"
+    mode: "0755"
 
 - name: "Optionally copy Jolokia agent JAR to cluster"
   when: need_jolokia
@@ -21,13 +21,13 @@
       ansible.builtin.copy:
         src: "{{ local_cache }}/{{ cassandra_files_jolokia_jar }}"
         dest: "{{ deploy_docker_folder }}/"
-        mode: "644"
+        mode: "0644"
 
 - name: "Copy cassandra config files"
   ansible.builtin.copy:
     src: "{{ group_local_cache }}/{{ item }}"
     dest: "{{ deploy_docker_folder }}/"
-    mode: "644"
+    mode: "0644"
   loop:
     - "{{ cassandra_files_jvm_server_options }}"
     - "{{ cassandra_files_jvm11_server_options }}"
@@ -36,13 +36,13 @@
   ansible.builtin.template:
     src: "{{ group_local_cache }}/{{ cassandra_files_cassandra_yaml }}.j2"
     dest: "{{ deploy_docker_folder }}/{{ cassandra_files_cassandra_yaml }}"
-    mode: "644"
+    mode: "0644"
 
 - name: "Copy cqlsh and nodetool wrapper to cluster"
   ansible.builtin.template:
     src: "{{ item }}-wrapper.sh.j2"
     dest: "{{ deploy_docker_folder }}/{{ item }}"
-    mode: "755"
+    mode: "0755"
   loop:
     - "cqlsh"
     - "nodetool"

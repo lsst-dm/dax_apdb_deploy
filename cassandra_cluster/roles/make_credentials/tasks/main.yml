@@ -1,51 +1,56 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for make_credentials
 
 - name: "Get credentials from Hashi Vault"
-  when: credentials_source == "hashi_vault"
+  when: make_credentials_source == "hashi_vault"
   delegate_to: localhost
   run_once: true
   block:
 
-    - ansible.builtin.set_fact:
-        _hashi_vault_path: ""
-        "{{ credentials_var }}":
-    - when: credentials_account == "backup_s3"
+    - name: "Set defaults"
       ansible.builtin.set_fact:
-        _hashi_vault_path: "{{ backup_hashi_vault_aws_path }}"
-    - when: credentials_account == "cassandra_user"
+        __hashi_vault_path: ""
+        "{{ make_credentials_var }}":
+    - name: "Check account S3"
+      when: make_credentials_account == "backup_s3"
       ansible.builtin.set_fact:
-        _hashi_vault_path: "{{ hashi_vault_user_path }}"
-    - when: credentials_account == "cassandra_super"
+        __hashi_vault_path: "{{ backup_hashi_vault_aws_path }}"
+    - name: "Check account user"
+      when: make_credentials_account == "cassandra_user"
       ansible.builtin.set_fact:
-        _hashi_vault_path: "{{ hashi_vault_super_path }}"
+        __hashi_vault_path: "{{ hashi_vault_user_path }}"
+    - name: "Check account super"
+      when: make_credentials_account == "cassandra_super"
+      ansible.builtin.set_fact:
+        __hashi_vault_path: "{{ hashi_vault_super_path }}"
 
     - name: "Fail for unsupported credentials account"
-      when: _hashi_vault_path == ""
+      when: __hashi_vault_path == ""
       ansible.builtin.fail:
         msg: >-
-          Unsupported credentials_account '{{ credentials_account }}'.
+          Unsupported make_credentials_account '{{ make_credentials_account }}'.
           Expected one of: backup_s3, cassandra_user, cassandra_super.
 
     # Get some secrets from the Vault, runs on localhost, so use lookup
     # plugin instead of module.
     - name: "Ask Vault for credentials"
-      when: _hashi_vault_path != ""
+      when: __hashi_vault_path != ""
+      no_log: true
       block:
         - name: "Ask Vault for credentials"
           ansible.builtin.set_fact:
-            _hashi_vault_response: "{{ lookup('community.hashi_vault.vault_kv2_get', _hashi_vault_path, mount_point=hashi_vault_mount_point) }}"
+            __hashi_vault_response: "{{ lookup('community.hashi_vault.vault_kv2_get', __hashi_vault_path, mount_point=make_credentials_hashi_vault_mount_point) }}"
 
         - name: "Extract credentials"
-          when: credentials_account == "backup_s3"
+          when: make_credentials_account == "backup_s3"
           ansible.builtin.set_fact:
-            "{{ credentials_var }}":
-              access_key: "{{ _hashi_vault_response.data.data.access_key }}"
-              secret_key: "{{ _hashi_vault_response.data.data.secret_key }}"
+            "{{ make_credentials_var }}":
+              access_key: "{{ __hashi_vault_response.data.data.access_key }}"
+              secret_key: "{{ __hashi_vault_response.data.data.secret_key }}"
         - name: "Extract credentials"
-          when: credentials_account != "backup_s3"
+          when: make_credentials_account != "backup_s3"
           ansible.builtin.set_fact:
-            "{{ credentials_var }}":
-              username: "{{ _hashi_vault_response.data.data.username | default(_hashi_vault_response.data.data.user) }}"
-              password: "{{ _hashi_vault_response.data.data.password }}"
+            "{{ make_credentials_var }}":
+              username: "{{ __hashi_vault_response.data.data.username | default(__hashi_vault_response.data.data.user) }}"
+              password: "{{ __hashi_vault_response.data.data.password }}"

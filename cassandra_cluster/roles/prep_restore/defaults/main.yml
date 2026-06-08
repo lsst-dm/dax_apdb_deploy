@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# defaults file for prep_restore
+
+prep_restore_medusa_venv: "{{ deploy_folder }}/medusa-venv"
+
+# Binary package location for Cassandra. This is used to install Cassandra on
+# the cluster nodes. Installation is only used by medusa restore.
+prep_restore_c8_download_uri: "https://archive.apache.org/dist/cassandra/{{ cassandra_version }}/apache-cassandra-{{ cassandra_version }}-bin.tar.gz"
+
+prep_restore_http_proxy: "{{ http_proxy }}"
+prep_restore_https_proxy: "{{ https_proxy }}"

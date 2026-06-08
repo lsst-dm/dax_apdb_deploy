@@ -33,9 +33,9 @@ logs_dir: /var/log/cassandra
 use_password: false
 
 # Specifies where credentials for new Cassandra accounts come from:
-#   - "hashi_vault" to get credentails from HashiCorp Vault.
+#   - "hashi_vault" to get credentials from HashiCorp Vault.
 #     Using HashiCorp Vault requires $VAULT_ADDR and "vault login".
-credentials_source:
+make_credentials_source:
 
 # Path for regular user credentials in HashiCorp Vault.
 hashi_vault_user_path: ""
@@ -43,7 +43,7 @@ hashi_vault_user_path: ""
 # Path for superuser credentials in HashiCorp Vault.
 hashi_vault_super_path: ""
 
-# Maunt point for HashiCorp Vault.
+# Mount point for HashiCorp Vault.
 hashi_vault_mount_point: "secret"
 
 # Comma-separated set of seed node names from the set of nodes in the play.

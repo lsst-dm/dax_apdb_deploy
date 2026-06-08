@@ -1,7 +1,7 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # defaults file for roles/cassandra_accounts
 
 # Replication factor for system_auth namespace, this assumes cluster with 3+
 # nodes. For smaller clusters this needs to be overriden.
-system_auth_rf: 3
+cassandra_accounts_system_auth_rf: "{{ system_auth_rf | default(3) }}"

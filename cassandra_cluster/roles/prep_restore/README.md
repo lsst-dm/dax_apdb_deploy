@@ -1,5 +1,5 @@
-prep-cluster-restore
-====================
+prep_restore
+============
 
 This role prepares environment on remote host suitable for execution of `medusa cluster-restore` command.
 Normal way to restore Cassandra cluster is to use `medusa-restore` playbook, but it only works when restoring into the same topology.
@@ -9,7 +9,7 @@ Here are the steps that this role performs:
 
 - Installs file `~/.bashrc.d/50-squid-proxy.conf` containing envvars for HTTP(S) proxy needed to run `pip install`.
   That file is sourced by `~/.bashrc`, which already has necessary code.
-- Creates virtual environment to install `cassandra-medusa` in `{{ medusa_venv }}`.
+- Creates virtual environment to install `cassandra-medusa` in `{{ prep_restore_medusa_venv }}`.
 - Installs `cassandra-medusa` in that virtual environment.
 - Installs `~/.bashrc.d/60-activate-medusa-env.conf` file which activates that virtual environment on login, so that `medusa` executable is in the `$PATH`.
 - Installs Cassandra in `{{ deploy_folder }}/cassandra`, needed to run `sstableloader`.
@@ -36,8 +36,8 @@ Role Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `medusa_venv` | location of the virtual environment for `cassandra-medusa` | `{{ deploy_folder }}/medusa-venv` |
-| `cassandra_download_uri` | URL to download Cassandra binary package, default should be OK, it depends on `cassandra_version` ||
+| `prep_restore_medusa_venv` | location of the virtual environment for `cassandra-medusa` | `{{ deploy_folder }}/medusa-venv` |
+| `prep_restore_c8_download_uri` | URL to download Cassandra binary package, default should be OK, it depends on `cassandra_version` ||
 
 These variables need to be set to use this role:
 
@@ -69,7 +69,7 @@ Example Playbook
       gather_facts: false
 
       roles:
-        - prep-cluster-restore
+        - prep_restore
 
 License
 -------

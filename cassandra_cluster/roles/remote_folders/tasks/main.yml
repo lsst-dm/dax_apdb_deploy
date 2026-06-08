@@ -1,13 +1,24 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for roles/remote_folders
+
+- name: "Check variables"
+  ansible.builtin.assert:
+    that:
+      - deploy_folder is defined
+      - deploy_folder | length > 0
+      - deploy_docker_folder is defined
+      - deploy_docker_folder | length > 0
+    fail_msg: "'deploy_folder' and 'deploy_docker_folder' must be defined and non-empty"
 
 - name: "Create folder used by deployment tools"
   ansible.builtin.file:
     path: "{{ deploy_folder }}"
     state: "directory"
+    mode: "0750"
 
 - name: "Create folder used by docker tools"
   ansible.builtin.file:
     path: "{{ deploy_docker_folder }}"
     state: "directory"
+    mode: "0750"

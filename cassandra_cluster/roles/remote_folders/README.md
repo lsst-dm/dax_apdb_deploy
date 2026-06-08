@@ -9,12 +9,12 @@ Requirements
 Role Variables
 --------------
 
-`defaults/main.yaml` variables:
+The role uses variables defined elsewhere:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `deploy_folder` | location for deployment tools | `{{ ansible_env.HOME }}/apdb_deploy` |
-| `deploy_docker_folder` | location for all docker-compose files | `{{ deploy_folder }}/docker` |
+| `deploy_folder` | location for deployment tools |
+| `deploy_docker_folder` | location for all docker-compose files |
 
 Dependencies
 ------------

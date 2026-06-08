@@ -1,29 +1,30 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
 # tasks file for medusa_restore
 
 # We need all services stopped before restoring.
 - name: Check running services
-  ansible.builtin.shell: docker compose ps --services --filter "status=running"
-  args:
+  ansible.builtin.command:
+    cmd: docker compose ps --services --filter "status=running"
     chdir: "{{ deploy_docker_folder }}"
-  register: running_services
+  register: medusa_restore_running_services
+  changed_when: false
 
 - name: Fail if services are running
   ansible.builtin.fail:
     msg: "All services must be stopped before restore."
-  when: running_services.stdout != ""
+  when: medusa_restore_running_services.stdout != ""
 
 # Check that data directory exists.
 - name: Check data directory
   ansible.builtin.stat:
-    path:  "{{ data_dir }}"
-  register: data_dir_stat
+    path: "{{ data_dir }}"
+  register: medusa_restore_data_dir_stat
 
 - name: Fail if data directory is missing
   ansible.builtin.fail:
     msg: "Data directory must be re-created before restore."
-  when: not data_dir_stat.stat.exists or not data_dir_stat.stat.isdir
+  when: not medusa_restore_data_dir_stat.stat.exists or not medusa_restore_data_dir_stat.stat.isdir
 
 - name: Fail if backup name is missing
   ansible.builtin.fail:

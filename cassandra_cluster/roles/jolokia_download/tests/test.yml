@@ -1,6 +1,7 @@
-#SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 ---
-- hosts: localhost
+- name: "Test role"
+  hosts: localhost
   remote_user: root
   roles:
-    - roles/jolokia
+    - jolokia_download

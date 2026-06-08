@@ -29,8 +29,8 @@
       ansible.posix.sysctl:
         name: vm.max_map_count
         value: "1048575"
-        sysctl_set: yes
-        reload: yes
+        sysctl_set: true
+        reload: true
 
     # Copied from community.cassandra.cassandra_linux role.
     - name: "Extra Limit for RH Derived Distros"
@@ -38,7 +38,8 @@
         path: /etc/security/limits.d/90-nproc.conf
         regexp: "^\\* - nproc 32768"
         line: "* - nproc 32768"
-        create: yes
+        create: true
+        mode: "0644"
       when: ansible_facts["os_family"] == "RedHat"
 
     # Copied from community.cassandra.cassandra_linux role.
