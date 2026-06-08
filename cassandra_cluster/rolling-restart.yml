@@ -25,3 +25,4 @@
         services: ["{{ service_name }}"]
         project_src: "{{ deploy_docker_folder }}"
         wait: true
+        wait_timeout: 60

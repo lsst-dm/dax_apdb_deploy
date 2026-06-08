@@ -5,7 +5,7 @@
     state: present
     project_src: "{{ deploy_docker_folder }}"
     wait: true
-    wait_timeout: 15
+    wait_timeout: 60
 
 # Wait until Cassandra responds on native port.
 - name: "Wait for Cassandra node"
