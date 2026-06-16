@@ -13,30 +13,18 @@
   become_method: "ansible.builtin.sudo"
   block:
 
-    - name: "Install telegraf filter script"
+    - name: "Install telegraf scripts"
       ansible.builtin.copy:
-        src: "files/cassandra-metrics-rename.py"
-        dest: "{{ telegraf_config_path }}/cassandra-metrics-rename.py"
+        src: "{{ item }}"
+        dest: "{{ telegraf_config_path }}/{{ item }}"
         mode: "0644"
+      loop: ["cassandra-metrics-rename.py", "zpool-health.py"]
       notify: "Restart telegraf"
 
-    - name: "Install zpool health script"
-      ansible.builtin.copy:
-        src: "files/zpool-health.py"
-        dest: "{{ telegraf_config_path }}/zpool-health.py"
-        mode: "0644"
-      notify: "Restart telegraf"
-
-    - name: "Install telegraf config for cassandra"
+    - name: "Install telegraf config files"
       ansible.builtin.template:
-        src: "90-cassandra.conf.j2"
-        dest: "{{ telegraf_config_path }}/90-cassandra.conf"
+        src: "{{ item }}.conf.j2"
+        dest: "{{ telegraf_config_path }}/{{ item }}.conf"
         mode: "0644"
-      notify: "Restart telegraf"
-
-    - name: "Install telegraf config for zfs"
-      ansible.builtin.template:
-        src: "90-zfs.conf.j2"
-        dest: "{{ telegraf_config_path }}/90-zfs.conf"
-        mode: "0644"
+      loop: ["90-cassandra", "90-zfs", "90-tags"]
       notify: "Restart telegraf"
