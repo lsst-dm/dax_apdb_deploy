@@ -56,7 +56,7 @@
 
 - name: "Configure telegraf"
   hosts: "{{ ansible_play_hosts }}"
-  gather_facts: true
+  gather_facts: false
   become: true
 
   roles:

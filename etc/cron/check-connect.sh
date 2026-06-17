@@ -57,16 +57,26 @@ cd $(dirname $(dirname $(dirname $(readlink -fn $0))))
 source setup.sh
 
 # Get the list of hosts.
-hosts=$(ansible-inventory $inventories --list | jq -r '._meta.hostvars | to_entries | .[] | .value.ansible_host' | sort -u | tr '\n' ' ')
+hosts_and_tags=$(\
+    ansible-inventory $inventories --list --vars --playbook-dir cassandra_cluster |\
+    jq -r '._meta.hostvars | to_entries | .[] | .value | .ansible_host + ":" + .cluster_unique_id' |\
+    sort -u | tr '\n' ' '\
+)
 
-# Command to execute for checking
-cmd="for h in $hosts; do nc -zw1 \$h 9042; echo \$h:\$?; done"
-if [ -z "$host" ]; then
-    output=$(bash -c "$cmd")
-else
-    output=$(ssh -x $host "$cmd")
-fi
 
+for host_tag in $hosts_and_tags; do
+    host_tag_array=(${host_tag/:/ })
+    host_name=${host_tag_array[0]}
+    tag=${host_tag_array[1]}
+
+    cmd="nc -zw1 $host_name $port; echo \$?"
+    if [ -z "$host" ]; then
+        node_output=$(bash -c "$cmd")
+    else
+        node_output=$(ssh -x "$host" "$cmd")
+    fi
+    output="$output $host_name:$node_output:$tag"
+done
 
 influx_line_format() {
     # Parse results and format as influxdb line format
@@ -74,11 +84,12 @@ influx_line_format() {
     echo "# DML"
     echo "# CONTEXT-DATABASE: $db"
     for node_result in $*; do
-        node_result=(${node_result/:/ })
+        node_result=(${node_result//:/ })
         host_name=${node_result[0]}
+        tag=${node_result[2]}
         status="0"
         [ ${node_result[1]} = "0" ] && status="1"
-        echo "$measurement,host=$host_name can_connect=$status $time_ns"
+        echo "$measurement,host=$host_name,apdb_cluster=$tag can_connect=$status $time_ns"
     done
 }
 
