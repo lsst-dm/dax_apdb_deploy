@@ -110,6 +110,7 @@ def clone_dump_keyspace(
     port: int,
     username: str | None,
     password: str | None,
+    table_patterns: list[str],
     jobs: int,
 ) -> None:
     """Dump keyspace schema and data to a specified directory.
@@ -128,6 +129,9 @@ def clone_dump_keyspace(
         Cassandra user name.
     password : `str` or `None`
         Cassandra password.
+    table_patterns : `list` [`str`]
+        List of patterns, tables will be dumped if they match one of the
+        patterns, if empty then all tables will be dumped.
     jobs : `int`
         Number of concurrent jobs.
     """
@@ -139,6 +143,7 @@ def clone_dump_keyspace(
             port=port,
             username=username,
             password=password,
+            table_patterns=table_patterns,
             jobs=jobs,
         )
     )
@@ -175,7 +180,7 @@ def clone_load_keyspace(
     password : `str` or `None`
         Cassandra password.
     table_patterns : `list` [`str`]
-        List of patterns, tables will be loaded if the matcgh one of the
+        List of patterns, tables will be loaded if they match one of the
         patterns, if empty then all tables will be loaded.
     skip_existing_tables : `bool`
         If `True` then loading will be skipped for the tables that already
@@ -227,6 +232,7 @@ async def _dump_keyspace(
     port: int,
     username: str | None,
     password: str | None,
+    table_patterns: list[str],
     jobs: int,
 ) -> None:
     # Need dsbulk, check that it can be found.
@@ -249,6 +255,14 @@ async def _dump_keyspace(
             tables = sorted(_keyspace_tables(session, keyspace))
             if not tables:
                 raise ValueError(f"Keyspace {keyspace!r} does not have any tables.")
+            if table_patterns:
+                tables_to_dump = []
+                for pattern in table_patterns:
+                    if matching_tables := fnmatch.filter(tables, pattern):
+                        tables_to_dump += matching_tables
+                    else:
+                        raise ValueError(f"Pattern {pattern!r} does not match any table name.")
+                tables = tables_to_dump
 
             # Dump schema for all tables but do not include CREATE KEYSPACE.
             schema = {}

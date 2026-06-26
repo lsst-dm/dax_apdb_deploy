@@ -89,10 +89,20 @@ class CloneKeyspaceClI(CLI):
         parser.set_defaults(method=scripts.clone_list_keyspaces)
 
     def _create_dump_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
-        parser = subparsers.add_parser("dump-keyspace", help="Dump keyspace to a folder.")
+        parser = subparsers.add_parser("dump-keyspace", help="Dump keyspace to a specified destination.")
         parser.add_argument("keyspace", type=str, help="Keyspace name.")
         parser.add_argument(
-            "destination", type=str, help="Folder to dump files, will be created if does not exist."
+            "destination", type=str, help="Where to dump files, a folder will be created if does not exist."
+        )
+        parser.add_argument(
+            "-t",
+            "--table-pattern",
+            dest="table_patterns",
+            type=str,
+            action="append",
+            default=[],
+            metavar="GLOB_PATTERN",
+            help=("Only dump specified tables, argument is a pattern that matches one or more table names."),
         )
         parser.add_argument(
             "-j",
@@ -115,9 +125,9 @@ class CloneKeyspaceClI(CLI):
             type=str,
             action="append",
             default=[],
+            metavar="GLOB_PATTERN",
             help=(
-                "Only restore specified tables, argument is a pattern that matches one or more table names, "
-                "can be used multiple times."
+                "Only restore specified tables, argument is a pattern that matches one or more table names."
             ),
         )
         parser.add_argument(
@@ -165,10 +175,10 @@ class CloneKeyspaceClI(CLI):
 
     def _use_vault(self, cliargs: dict[str, Any], host_vars: dict[str, Any]) -> None:
         """Retrieve username and password from the Vault."""
-        if host_vars["credentials_source"] != "hashi_vault":
+        if host_vars["make_credentials_source"] != "hashi_vault":
             raise AnsibleError(
-                "Cannot read credentials from the vault as credentials_source "
-                f"is set to unexpected value {host_vars['credentials_source']}."
+                "Cannot read credentials from the vault as make_credentials_source "
+                f"is set to unexpected value {host_vars['make_credentials_source']}."
             )
 
         # Service URL comes from $VAULT_ADDR
