@@ -66,7 +66,7 @@ class CloneKeyspaceClI(CLI):
         self.parser.add_argument(
             "--use-vault",
             action="store_true",
-            help="Use Vault to access credentials.",
+            help="Use Hashi Vault to retrieve Cassandra credentials.",
         )
         self.parser.add_argument(
             "--username",

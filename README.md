@@ -40,7 +40,7 @@ Cluster-specific overrides for these variables appear in the file `cassandra_clu
 
 ## User accounts
 
-Cassandra services run from a special service account (`runbincas`) on each cluster host.
+Cassandra services run from a special service account (`rubincas`) on each cluster host.
 Kerberos authentication is used for connecting to cluster nodes via SSH:
 - user executing Ansible roles needs to have their principal added to `~rubincas/.k5login` on each node (message `usdf-help`),
 - user need to have a valid Kerberos token by executing `kinit`.
@@ -180,3 +180,45 @@ An example of full cluster restore:
 Single-node restore can be done by limiting set of nodes with `-l` option:
 
     ansible-playbook -i <inventory> -l sdfk8sk007 -e backup_name=backup-20251014 medusa-restore.yml
+
+
+## Backups with dsbulk
+
+In addition to `cassandra-medusa`-based backups there is an option to dump contents of the Cassandra tables in CSV format and restore the tables later.
+This approach uses [dsbulk tool](https://docs.datastax.com/en/dsbulk/overview/dsbulk-about.html) from DataStax.
+The speed of dump/restore with `dsbulk` is significantly lower than that of `cassandra-medusa`, but it provides more flexibility.
+In particular, `dsbulk` is the only option for restoring data into a cluster of different topology.
+
+A wrapper script in `bin/clone-keyspace` implements a number of options to simplify common operations:
+- selection of the tables to dump/restore,
+- bundling all dumped tables and metadata into a single tarball or a ZIP archive,
+- uploading dumped data to an S3 bucket.
+
+The volume of the data produced by dump operation can be very high, to store intermediate results a temporary location with sufficient free space will be needed.
+
+An example of dumping all `DiaObject*` tables to a ZIP archive on S3:
+
+    clone-keyspace -i inventory/apdb_dev.yaml --use-vault dump-keyspace \
+       -t 'DiaObject*' -j 4 -b zip --tmp-dir /sdf/scratch/rubin/apdb/... \
+       keyspace s3://profile@bucket/archives/DiaObject-20260701.zip
+
+As the other tools in this package `clone-keyspace` uses Ansible configuration for cluster-specific information.
+The `-i` option specifies an inventory file for Cassandra cluster.
+The `--use-vault` option will read Cassandra password from the Hashi Vault using path configured in Ansible.
+Uploading files to an S3 bucket requires credentials being setup in `~/.lsst/aws-credentials.ini`.
+
+In addition to compressed CSV files the dump includes two additional files:
+- `schema.json` with the schema of the dumped tables,
+- `manifest.txt` with the list of the files produced by the command.
+
+These files are used to restore the tables into an active Cassandra cluster.
+The data to be restored need to be copied to a local directory and unpacked in advance.
+
+And example of the restore command that restores a single table:
+
+    clone-keyspace -i inventory/apdb_dev.yaml --use-vault load-keyspace \
+      -t DiaObjectLast keyspace /sdf/scratch/rubin/apdb/some-directory
+
+The restore operation can cause significant resource use on server side, it needs to be monitored.
+If timeouts or errors happen during restore it is recommended to use `--max-concurrent-queries` option with a low setting (64 may be a good start).
+It is also recommended to restore one table at a time, with some delay between tables to reduce stress on cluster.
