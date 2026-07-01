@@ -31,6 +31,7 @@ dependencies = [
     "grpcio",
     "grpcio-health-checking",
     "parallel-ssh",
+    "lsst-resources",
 ]
 
 dynamic = ["version"]
@@ -89,8 +90,6 @@ line-length = 110
 target-version = "py311"
 exclude = [
     "__init__.py",
-    "lex.py",
-    "yacc.py",
 ]
 
 [tool.ruff.lint]
@@ -158,12 +157,6 @@ checks = [
 ]
 exclude = [
     "^test_.*",  # Do not test docstrings in test code.
-    '^spatial\..*',  # Do not test doc strings in the spatial.py test code.
-    '^lex\..*',  # Lexer
-    '^parserLex\.',  # Docstrings are not numpydoc
-    '^parserYacc\.',  # Docstrings are not numpydoc
-    '^commands\.',  # Click docstrings, not numpydoc
-    'butler.cli$',  # This is the main click command
     '^__init__$',
     '\._[a-zA-Z_]+$',  # Private methods.
 ]

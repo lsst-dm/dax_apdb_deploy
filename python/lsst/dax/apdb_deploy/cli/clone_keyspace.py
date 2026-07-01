@@ -90,9 +90,16 @@ class CloneKeyspaceClI(CLI):
 
     def _create_dump_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
         parser = subparsers.add_parser("dump-keyspace", help="Dump keyspace to a specified destination.")
-        parser.add_argument("keyspace", type=str, help="Keyspace name.")
+        parser.add_argument("keyspace", type=str, help="Keyspace name to dump.")
         parser.add_argument(
-            "destination", type=str, help="Where to dump files, a folder will be created if does not exist."
+            "destination",
+            type=str,
+            help=(
+                "Where to dump files, this can be either a local filesystem path or URL on remote (S3) "
+                "store. Local folder will be created if does not exist. If option --bundle is not used "
+                "then destination must be a directory-like path. If --bundle is specified then path must "
+                "include extension matching the bundle type (.tar or .zip)."
+            ),
         )
         parser.add_argument(
             "-t",
@@ -112,10 +119,32 @@ class CloneKeyspaceClI(CLI):
             metavar="COUNT",
             help="Number of concurrent jobs, default: %(default)s.",
         )
+        parser.add_argument(
+            "-b",
+            "--bundle",
+            type=str,
+            default=None,
+            choices=("tar", "zip"),
+            metavar="ARCHIVE_TYPE",
+            help=(
+                "Bundle all dumped files into a single archive, either tar or zip. "
+                "Destination must be file URL or local path with a matching extension."
+            ),
+        )
+        parser.add_argument(
+            "--tmp-dir",
+            type=str,
+            default=None,
+            metavar="PATH",
+            help=(
+                "Directory to store intermediate files, will be created if does not exist. "
+                "Must be specified when `--bundle` is given or when destination is a remote (S3) path."
+            ),
+        )
         parser.set_defaults(method=scripts.clone_dump_keyspace)
 
     def _create_load_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
-        parser = subparsers.add_parser("load-keyspace", help="Load keyspace deta from a folder.")
+        parser = subparsers.add_parser("load-keyspace", help="Load keyspace data from a folder.")
         parser.add_argument("keyspace", type=str, help="Keyspace name.")
         parser.add_argument("folder", type=str, help="Folder with keyspace data created by dump-keyspace.")
         parser.add_argument(
@@ -146,7 +175,7 @@ class CloneKeyspaceClI(CLI):
             type=str,
             default=None,
             metavar="COUNT",
-            help="Limit number cincurrent queries, one of AUTO, <N>, <N>C default: AUTO.",
+            help="Limit number concurrent queries, one of AUTO, <N>, <N>C default: AUTO.",
         )
         parser.add_argument("--dry-run", action="store_true", help="Do not restore, only print actions.")
         parser.set_defaults(method=scripts.clone_load_keyspace)
