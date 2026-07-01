@@ -30,13 +30,21 @@ import os
 import re
 import shlex
 import subprocess
+import tarfile
+import tempfile
 import time
+import zipfile
+from collections.abc import Iterator
+from contextlib import ExitStack
 from string import Template
+from typing import Literal
 
 from cassandra.auth import AuthProvider, PlainTextAuthProvider
 from cassandra.cluster import Cluster, Session
 from cassandra.policies import RoundRobinPolicy
 from prettytable import PrettyTable
+
+from lsst.resources import ResourcePath
 
 _LOG = logging.getLogger(__name__)
 
@@ -45,44 +53,8 @@ _EXISTS_PLACEHOLDER = "${IF_NOT_EXISTS}"
 
 _CREATE_TABLE_RE = re.compile("(.*CREATE TABLE )([^.]+)([.].*)", re.DOTALL)
 
-
-def _check_dsbulk() -> None:
-    """Check that dsbulk application can be executed."""
-    try:
-        subprocess.run(("dsbulk", "--version"), capture_output=True)
-    except Exception as exc:
-        raise RuntimeError(f"Failed to execute dsbulk, check $PATH: {exc}") from None
-
-
-def _make_auth_provider(username: str | None, password: str | None) -> AuthProvider | None:
-    """Make Cassandra authentication provider instance."""
-    if username and password:
-        return PlainTextAuthProvider(username=username, password=password)
-    return None
-
-
-def _make_cluster(hosts: list[str], port: int, username: str | None, password: str | None) -> Cluster:
-    # Use first two hosts for contact points.
-    contact_points = hosts[:2]
-    return Cluster(
-        contact_points=contact_points,
-        port=port,
-        auth_provider=_make_auth_provider(username, password),
-        load_balancing_policy=RoundRobinPolicy(),
-        protocol_version=5,
-    )
-
-
-def _keyspace_tables(session: Session, keyspace: str) -> list[str]:
-    """Get the list of tables in a keyspace."""
-    query = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s'"
-    result = session.execute(query, [keyspace])
-    return [row[0] for row in result]
-
-
-def _replace_ks_name(statement: str) -> str:
-    """Replace keyspace name in CREATE TABLE with a placeholder"""
-    return _CREATE_TABLE_RE.sub(f"\\1{_EXISTS_PLACEHOLDER} {_KS_PLACEHOLDER}\\3", statement)
+# Location of the dsbulk log files relative to other dumped files.
+_DSBULK_LOG = "_dsbulk_log"
 
 
 def clone_list_keyspaces(*, hosts: list[str], port: int, username: str | None, password: str | None) -> None:
@@ -110,16 +82,21 @@ def clone_dump_keyspace(
     port: int,
     username: str | None,
     password: str | None,
+    table_patterns: list[str],
     jobs: int,
+    bundle: Literal["tar", "zip"] | None,
+    tmp_dir: str | None,
 ) -> None:
-    """Dump keyspace schema and data to a specified directory.
+    """Dump keyspace schema and data to a specified directory, archive, or
+    a remote URL.
 
     Parameters
     ----------
     keyspace : `str`
         Keyspace name.
     destination : `str`
-        Folder name to store data to, will be created if does not exist.
+        Local folder name, archive name, or a remote URL to store data to.
+        Folder will be created if does not exist.
     hosts : `list` [`str`]
         Names of the hosts in the cluster.
     port : `int`
@@ -128,20 +105,35 @@ def clone_dump_keyspace(
         Cassandra user name.
     password : `str` or `None`
         Cassandra password.
+    table_patterns : `list` [`str`]
+        List of patterns, tables will be dumped if they match one of the
+        patterns, if empty then all tables will be dumped.
     jobs : `int`
         Number of concurrent jobs.
+    bundle : `str` or `None`
+        If not `None` then bundle all files into a single archive, can be
+        either "tar" or "zip".
+    tmp_dir : `str` or `None`
+        Location of temporary folder to store intermediate files, must be
+        specified if ``bundle`` is not `None`or when ``destination`` is a
+        remote URL; ignored otherwise.
     """
-    asyncio.run(
-        _dump_keyspace(
-            keyspace=keyspace,
-            destination=destination,
-            hosts=hosts,
-            port=port,
-            username=username,
-            password=password,
-            jobs=jobs,
+    with ExitStack() as exit_stack:
+        asyncio.run(
+            _dump_keyspace(
+                keyspace=keyspace,
+                destination=destination,
+                hosts=hosts,
+                port=port,
+                username=username,
+                password=password,
+                table_patterns=table_patterns,
+                jobs=jobs,
+                bundle=bundle,
+                tmp_dir=tmp_dir,
+                exit_stack=exit_stack,
+            )
         )
-    )
 
 
 def clone_load_keyspace(
@@ -175,7 +167,7 @@ def clone_load_keyspace(
     password : `str` or `None`
         Cassandra password.
     table_patterns : `list` [`str`]
-        List of patterns, tables will be loaded if the matcgh one of the
+        List of patterns, tables will be loaded if they match one of the
         patterns, if empty then all tables will be loaded.
     skip_existing_tables : `bool`
         If `True` then loading will be skipped for the tables that already
@@ -227,43 +219,57 @@ async def _dump_keyspace(
     port: int,
     username: str | None,
     password: str | None,
+    table_patterns: list[str],
     jobs: int,
+    bundle: Literal["tar", "zip"] | None,
+    tmp_dir: str | None,
+    exit_stack: ExitStack,
 ) -> None:
     # Need dsbulk, check that it can be found.
     _check_dsbulk()
 
+    # Validate bundle mode destination path.
+    dst_resource = ResourcePath(destination)
+    tmp_path: ResourcePath | None = None
+    if bundle is not None:
+        if bundle not in ("tar", "zip"):
+            raise ValueError(f"Unexpected bundle type: {bundle}.")
+        if dst_resource.isdir():
+            raise ValueError(f"Destination {dst_resource!r} cannot be a directory.")
+        if dst_resource.getExtension().lower() != f".{bundle}":
+            raise ValueError(
+                f"Destination extension {dst_resource.getExtension()!r} "
+                f"does not match bundle type {bundle!r}."
+            )
+    else:
+        if not dst_resource.isdir():
+            raise ValueError(f"Destination {dst_resource!r} must be a directory.")
+
+    # Make a temporary folder from which we can copy/transfer files.
+    if bundle is not None or not dst_resource.isLocal:
+        if not tmp_dir:
+            raise ValueError("Temporary directory must be specified.")
+        os.makedirs(tmp_dir, exist_ok=True)
+        temp_directory = tempfile.TemporaryDirectory(dir=tmp_dir)
+        exit_stack.enter_context(temp_directory)
+        tmp_path = ResourcePath(temp_directory.name)
+
+    dump_location = tmp_path if tmp_path is not None else dst_resource
+
     # Create destination if does not exist.
-    dsbulk_logs = os.path.join(destination, "_dsbulk_log")
-    os.makedirs(dsbulk_logs, exist_ok=True)
+    dsbulk_logs = dump_location.join(_DSBULK_LOG)
+    dsbulk_logs.mkdir()
     manifest: list[str] = []
 
-    # Check that keyspace exists.
-    with _make_cluster(hosts, port, username, password) as cluster:
-        with cluster.connect() as session:
-            query = "SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s'"
-            result = session.execute(query, [keyspace])
-            if not result:
-                raise ValueError(f"Keyspace {keyspace!r} does not exist.")
-
-            # Get the list of tables.
-            tables = sorted(_keyspace_tables(session, keyspace))
-            if not tables:
-                raise ValueError(f"Keyspace {keyspace!r} does not have any tables.")
-
-            # Dump schema for all tables but do not include CREATE KEYSPACE.
-            schema = {}
-            for table in tables:
-                query = f'DESCRIBE "{keyspace}"."{table}"'
-                result = session.execute(query)
-                table_schema = result.one().create_statement
-                table_schema = _replace_ks_name(table_schema)
-                schema[table] = table_schema
-            with open(os.path.join(destination, "schema.json"), "w") as out:
-                json.dump(schema, out)
-            manifest.append("schema.json")
+    # Get schema for all tables to be dumped.
+    schema = _table_schema(keyspace, hosts, port, username, password, table_patterns)
+    with open(dump_location.join("schema.json").ospath, "w") as out:
+        json.dump(schema, out)
+    manifest.append("schema.json")
 
     t0 = time.time()
 
+    tables = sorted(schema)
     n_tasks = max(jobs, 1)
     tasks: list[asyncio.Task] = []
     exceptions = []
@@ -275,7 +281,7 @@ async def _dump_keyspace(
                     port=port,
                     keyspace=keyspace,
                     table=tables.pop(0),
-                    destination=destination,
+                    destination=dump_location.ospath,
                     username=username,
                     password=password,
                 )
@@ -296,13 +302,38 @@ async def _dump_keyspace(
         raise BaseExceptionGroup("One or more operations failed", exceptions)
 
     # Finally write manifest, it is a marker that dump is complete.
-    with open(os.path.join(destination, "manifest.txt"), "w") as out:
+    with open(dump_location.join("manifest.txt").ospath, "w") as out:
         for name in sorted(manifest):
             print(name, file=out)
 
     t1 = time.time()
 
     _LOG.info("Total time for dump: %.2f sec", t1 - t0)
+
+    if bundle is not None:
+        local_bundle_path = dst_resource
+        if not dst_resource.isLocal:
+            local_bundle_path = dump_location.join(dst_resource.basename())
+
+        if bundle == "tar":
+            _make_tarball(dump_location, manifest, local_bundle_path)
+        elif bundle == "zip":
+            _make_zip(dump_location, manifest, local_bundle_path)
+        else:
+            raise ValueError(f"Unexpected bundle type {bundle}")
+
+        if local_bundle_path != dst_resource:
+            _LOG.info("Transferring bundle to %s", dst_resource)
+            dst_resource.transfer_from(local_bundle_path, transfer="move")
+
+    elif not dst_resource.isLocal:
+        # Transfer individual files to remote.
+        _LOG.info("Transferring files to %s", dst_resource)
+        for local_path in _walk_files(dump_location):
+            rel_path = local_path.relative_to(dump_location)
+            assert rel_path is not None, "must be relative"
+            remote_path = dst_resource.join(rel_path)
+            remote_path.transfer_from(local_path, transfer="move")
 
 
 async def _dump_table(
@@ -318,7 +349,7 @@ async def _dump_table(
     """Dump table contents as CSV file."""
     output_file = f"{table}.csv.gz"
     output_path = os.path.join(destination, output_file)
-    log_dir = os.path.join(destination, "_dsbulk_log")
+    log_dir = os.path.join(destination, _DSBULK_LOG)
     os.makedirs(log_dir, exist_ok=True)
 
     # Command to dump table data in CSV format to stdout.
@@ -526,7 +557,7 @@ async def _load_table(
     if dry_run:
         return
 
-    log_dir = os.path.join(folder, "_dsbulk_log")
+    log_dir = os.path.join(folder, _DSBULK_LOG)
     os.makedirs(log_dir, exist_ok=True)
 
     # Command to load table data in CSV format from stdin.
@@ -572,3 +603,150 @@ async def _load_table(
         os.close(fd)
 
     _LOG.info("Finished restoring table %s", table)
+
+
+def _walk_files(path: ResourcePath) -> Iterator[ResourcePath]:
+    """Find all files in a specified directory."""
+    for rp, _, files in path.walk():
+        for file_name in files:
+            yield rp.join(file_name)
+
+
+def _make_tarball(dump_location: ResourcePath, manifest: list[str], local_bundle_path: ResourcePath) -> None:
+    """Make a tarball with all files in manifest plus manifest itself and
+    dsbulk log files.
+    """
+    # We are not compressing tar, bulk of data is already compressed.
+    _LOG.info("Creating tarball %s", local_bundle_path)
+    members = manifest + ["manifest.txt", _DSBULK_LOG]
+    try:
+        with tarfile.open(local_bundle_path.ospath, "w") as tar:
+            for member in members:
+                member_path = dump_location.join(member)
+                tar.add(member_path.ospath, member)
+                # Delete file after adding it to a tarball, could avoid running
+                # out of disk space on large backups. We do not care to remove
+                # dsbulk logs as they are small and will be removed when tmp
+                # directory is removed.
+                if member != _DSBULK_LOG:
+                    member_path.remove()
+    except Exception:
+        # Delete partial tarball on any errors.
+        try:
+            local_bundle_path.remove()
+        except Exception:
+            pass
+        raise
+
+
+def _make_zip(dump_location: ResourcePath, manifest: list[str], local_bundle_path: ResourcePath) -> None:
+    """Make a zip archive with all files in manifest plus manifest itself and
+    dsbulk log files.
+    """
+    _LOG.info("Creating zip archive %s", local_bundle_path)
+    members = manifest + ["manifest.txt"]
+    try:
+        # We are not compressing zip, bulk of data is already compressed.
+        with zipfile.ZipFile(local_bundle_path.ospath, "w", compression=zipfile.ZIP_STORED) as archive:
+            for member in members:
+                member_path = dump_location.join(member)
+                archive.write(member_path.ospath, member)
+                # Delete file after adding it to archive.
+                member_path.remove()
+
+            # And all dsbulk log files.
+            for local_path in _walk_files(dump_location.join(_DSBULK_LOG)):
+                archive.write(local_path.ospath, local_path.relative_to(dump_location))
+
+    except Exception:
+        # Delete partial archive on any errors.
+        try:
+            local_bundle_path.remove()
+        except Exception:
+            pass
+        raise
+
+
+def _table_schema(
+    keyspace: str,
+    hosts: list[str],
+    port: int,
+    username: str | None,
+    password: str | None,
+    table_patterns: list[str],
+) -> dict[str, str]:
+    """Extract schema definition for all tables to be dumped.
+
+    Returns a dict with a table name as a key and "CREATE TABLE" template as a
+    value.
+    """
+    with _make_cluster(hosts, port, username, password) as cluster:
+        with cluster.connect() as session:
+            # Check that keyspace exists.
+            query = "SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s'"
+            result = session.execute(query, [keyspace])
+            if not result:
+                raise ValueError(f"Keyspace {keyspace!r} does not exist.")
+
+            # Get the list of tables.
+            tables = sorted(_keyspace_tables(session, keyspace))
+            if not tables:
+                raise ValueError(f"Keyspace {keyspace!r} does not have any tables.")
+            if table_patterns:
+                tables_to_dump: set[str] = set()
+                for pattern in table_patterns:
+                    if matching_tables := fnmatch.filter(tables, pattern):
+                        tables_to_dump.update(matching_tables)
+                    else:
+                        raise ValueError(f"Pattern {pattern!r} does not match any table name.")
+                tables = sorted(tables_to_dump)
+
+            # Dump schema for all tables but do not include CREATE KEYSPACE.
+            schema = {}
+            for table in tables:
+                query = f'DESCRIBE "{keyspace}"."{table}"'
+                result = session.execute(query)
+                table_schema = result.one().create_statement
+                table_schema = _replace_ks_name(table_schema)
+                schema[table] = table_schema
+
+            return schema
+
+
+def _check_dsbulk() -> None:
+    """Check that dsbulk application can be executed."""
+    try:
+        subprocess.run(("dsbulk", "--version"), capture_output=True)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to execute dsbulk, check $PATH: {exc}") from None
+
+
+def _make_auth_provider(username: str | None, password: str | None) -> AuthProvider | None:
+    """Make Cassandra authentication provider instance."""
+    if username and password:
+        return PlainTextAuthProvider(username=username, password=password)
+    return None
+
+
+def _make_cluster(hosts: list[str], port: int, username: str | None, password: str | None) -> Cluster:
+    # Use first two hosts for contact points.
+    contact_points = hosts[:2]
+    return Cluster(
+        contact_points=contact_points,
+        port=port,
+        auth_provider=_make_auth_provider(username, password),
+        load_balancing_policy=RoundRobinPolicy(),
+        protocol_version=5,
+    )
+
+
+def _keyspace_tables(session: Session, keyspace: str) -> list[str]:
+    """Get the list of tables in a keyspace."""
+    query = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s'"
+    result = session.execute(query, [keyspace])
+    return [row[0] for row in result]
+
+
+def _replace_ks_name(statement: str) -> str:
+    """Replace keyspace name in CREATE TABLE with a placeholder"""
+    return _CREATE_TABLE_RE.sub(f"\\1{_EXISTS_PLACEHOLDER} {_KS_PLACEHOLDER}\\3", statement)

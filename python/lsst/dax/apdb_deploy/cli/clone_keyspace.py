@@ -66,7 +66,7 @@ class CloneKeyspaceClI(CLI):
         self.parser.add_argument(
             "--use-vault",
             action="store_true",
-            help="Use Vault to access credentials.",
+            help="Use Hashi Vault to retrieve Cassandra credentials.",
         )
         self.parser.add_argument(
             "--username",
@@ -89,10 +89,27 @@ class CloneKeyspaceClI(CLI):
         parser.set_defaults(method=scripts.clone_list_keyspaces)
 
     def _create_dump_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
-        parser = subparsers.add_parser("dump-keyspace", help="Dump keyspace to a folder.")
-        parser.add_argument("keyspace", type=str, help="Keyspace name.")
+        parser = subparsers.add_parser("dump-keyspace", help="Dump keyspace to a specified destination.")
+        parser.add_argument("keyspace", type=str, help="Keyspace name to dump.")
         parser.add_argument(
-            "destination", type=str, help="Folder to dump files, will be created if does not exist."
+            "destination",
+            type=str,
+            help=(
+                "Where to dump files, this can be either a local filesystem path or URL on remote (S3) "
+                "store. Local folder will be created if does not exist. If option --bundle is not used "
+                "then destination must be a directory-like path. If --bundle is specified then path must "
+                "include extension matching the bundle type (.tar or .zip)."
+            ),
+        )
+        parser.add_argument(
+            "-t",
+            "--table-pattern",
+            dest="table_patterns",
+            type=str,
+            action="append",
+            default=[],
+            metavar="GLOB_PATTERN",
+            help=("Only dump specified tables, argument is a pattern that matches one or more table names."),
         )
         parser.add_argument(
             "-j",
@@ -102,10 +119,32 @@ class CloneKeyspaceClI(CLI):
             metavar="COUNT",
             help="Number of concurrent jobs, default: %(default)s.",
         )
+        parser.add_argument(
+            "-b",
+            "--bundle",
+            type=str,
+            default=None,
+            choices=("tar", "zip"),
+            metavar="ARCHIVE_TYPE",
+            help=(
+                "Bundle all dumped files into a single archive, either tar or zip. "
+                "Destination must be file URL or local path with a matching extension."
+            ),
+        )
+        parser.add_argument(
+            "--tmp-dir",
+            type=str,
+            default=None,
+            metavar="PATH",
+            help=(
+                "Directory to store intermediate files, will be created if does not exist. "
+                "Must be specified when `--bundle` is given or when destination is a remote (S3) path."
+            ),
+        )
         parser.set_defaults(method=scripts.clone_dump_keyspace)
 
     def _create_load_keyspace(self, subparsers: argparse._SubParsersAction) -> None:
-        parser = subparsers.add_parser("load-keyspace", help="Load keyspace deta from a folder.")
+        parser = subparsers.add_parser("load-keyspace", help="Load keyspace data from a folder.")
         parser.add_argument("keyspace", type=str, help="Keyspace name.")
         parser.add_argument("folder", type=str, help="Folder with keyspace data created by dump-keyspace.")
         parser.add_argument(
@@ -115,9 +154,9 @@ class CloneKeyspaceClI(CLI):
             type=str,
             action="append",
             default=[],
+            metavar="GLOB_PATTERN",
             help=(
-                "Only restore specified tables, argument is a pattern that matches one or more table names, "
-                "can be used multiple times."
+                "Only restore specified tables, argument is a pattern that matches one or more table names."
             ),
         )
         parser.add_argument(
@@ -136,7 +175,7 @@ class CloneKeyspaceClI(CLI):
             type=str,
             default=None,
             metavar="COUNT",
-            help="Limit number cincurrent queries, one of AUTO, <N>, <N>C default: AUTO.",
+            help="Limit number concurrent queries, one of AUTO, <N>, <N>C default: AUTO.",
         )
         parser.add_argument("--dry-run", action="store_true", help="Do not restore, only print actions.")
         parser.set_defaults(method=scripts.clone_load_keyspace)
@@ -165,10 +204,10 @@ class CloneKeyspaceClI(CLI):
 
     def _use_vault(self, cliargs: dict[str, Any], host_vars: dict[str, Any]) -> None:
         """Retrieve username and password from the Vault."""
-        if host_vars["credentials_source"] != "hashi_vault":
+        if host_vars["make_credentials_source"] != "hashi_vault":
             raise AnsibleError(
-                "Cannot read credentials from the vault as credentials_source "
-                f"is set to unexpected value {host_vars['credentials_source']}."
+                "Cannot read credentials from the vault as make_credentials_source "
+                f"is set to unexpected value {host_vars['make_credentials_source']}."
             )
 
         # Service URL comes from $VAULT_ADDR
