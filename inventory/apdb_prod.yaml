@@ -22,5 +22,11 @@ apdb_prod_rack1:
       ansible_host: sdfk8sk005.sdf.slac.stanford.edu
     sdfk8sk006:
       ansible_host: sdfk8sk006.sdf.slac.stanford.edu
+    sdfk8sk007:
+      ansible_host: sdfk8sk007.sdf.slac.stanford.edu
+    sdfk8sk008:
+      ansible_host: sdfk8sk008.sdf.slac.stanford.edu
+    sdfk8sk009:
+      ansible_host: sdfk8sk009.sdf.slac.stanford.edu
   vars:
     node_rack: "rack-1"
