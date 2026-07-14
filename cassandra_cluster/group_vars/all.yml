@@ -13,9 +13,9 @@ service_name: cassandra
 # If `use_monitoring` is set to false then telegraf configuration will be
 # skipped and jolokia will not be used.
 use_monitoring: true
-# Jolokia for monitoring JMX via REST: https://github.com/jolokia/jolokia
-# version 1.7 should be used for now, 2.x was not tested.
-jolokia_version: 1.7.2
+# Jolokia for monitoring JMX via REST: https://github.com/jolokia/jolokia.
+# Version 2.2.9 is the latest version compatible with JVM 11.
+jolokia_version: 2.2.9
 
 # Location on controller node used to cache various files.
 local_cache: "{{ playbook_dir }}/.cache"
