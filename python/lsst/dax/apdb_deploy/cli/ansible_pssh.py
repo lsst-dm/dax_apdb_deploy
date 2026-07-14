@@ -216,10 +216,11 @@ class PsshCLI(CLI):
             if cliargs.get("follow"):
                 results = client.run_command(command, use_pty=True, read_timeout=0.1, stop_on_errors=False)
                 self._exec_follow(results, address_to_host)
-                self._summarize(results, address_to_host)
                 client.join(results)
+                self._summarize(results, address_to_host)
             else:
                 results = client.run_command(command, stop_on_errors=False)
+                client.join(results)
                 self._exec_wait(results, address_to_host)
 
     def _exec_wait(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
