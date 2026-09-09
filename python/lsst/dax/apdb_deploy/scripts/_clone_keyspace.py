@@ -683,8 +683,8 @@ def _table_schema(
     with _make_cluster(hosts, port, username, password) as cluster:
         with cluster.connect() as session:
             # Check that keyspace exists.
-            query = "SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s'"
-            result = session.execute(query, [keyspace])
+            query = f"SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '{keyspace}'"
+            result = session.execute(query)
             if not result:
                 raise ValueError(f"Keyspace {keyspace!r} does not exist.")
 
@@ -742,8 +742,8 @@ def _make_cluster(hosts: list[str], port: int, username: str | None, password: s
 
 def _keyspace_tables(session: Session, keyspace: str) -> list[str]:
     """Get the list of tables in a keyspace."""
-    query = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s'"
-    result = session.execute(query, [keyspace])
+    query = f"SELECT table_name FROM system_schema.tables WHERE keyspace_name = '{keyspace}'"
+    result = session.execute(query)
     return [row[0] for row in result]
 
 
