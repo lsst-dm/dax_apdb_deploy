@@ -5,7 +5,7 @@ deploy_docker_folder: "{{ deploy_folder }}/docker"
 
 # Docker image and version (tag) to use.
 cassandra_image_name: cassandra
-cassandra_version: 4.1.10
+cassandra_version: 4.1.12
 
 # Service name for docker-compose
 service_name: cassandra
@@ -64,7 +64,7 @@ cassandra_user_uid: "999"
 use_backups: false
 
 medusa_image_name: k8ssandra/medusa
-medusa_version: 0.27.0
+medusa_version: 0.30.1
 
 backup_service_name: medusa
 backup_storage_provider: s3_compatible
