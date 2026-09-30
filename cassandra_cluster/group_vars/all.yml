@@ -5,7 +5,7 @@ deploy_docker_folder: "{{ deploy_folder }}/docker"
 
 # Docker image and version (tag) to use.
 cassandra_image_name: cassandra
-cassandra_version: 4.1.10
+cassandra_version: 4.1.12
 
 # Service name for docker-compose
 service_name: cassandra
