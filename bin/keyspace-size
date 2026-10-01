@@ -55,6 +55,7 @@ gawk -v uncomp=$uncompressed -v human=$human '
 
 
     /^Keyspace : / { ks = $3; keyspaces[ks] = ks; }
+    /^Keyspace: / { ks = $2; keyspaces[ks] = ks; }
     /^\s*Table: / { t = $2 }
     /Space used .total.: / {
         s = $4
