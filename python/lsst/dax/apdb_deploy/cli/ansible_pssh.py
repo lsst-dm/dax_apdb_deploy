@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import random
 
@@ -101,6 +102,12 @@ class PsshCLI(CLI):
             action="store_true",
             help="Print output without waiting for command completion.",
         )
+        self.parser.add_argument(
+            "--json",
+            default=False,
+            action="store_true",
+            help="With --follow option print output in json line format.",
+        )
         self.parser.add_argument("command", help="Shell command to execute on remote hosts.", nargs="?")
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
@@ -127,8 +134,8 @@ class PsshCLI(CLI):
 
     def run(self) -> int:
         try:
-            self._run()
-            return 0
+            rc = self._run()
+            return rc
         except SystemExit:
             raise
         except BaseException:
@@ -191,6 +198,7 @@ class PsshCLI(CLI):
             command = f"cd '{deploy_docker_folder}'; {command}"
 
         user = cliargs.get("remote_user")
+        results = []
         if cliargs["serial"]:
             clients = [
                 SSHClient(
@@ -201,27 +209,38 @@ class PsshCLI(CLI):
                 for host_address in address_to_host
             ]
             if cliargs.get("follow"):
+                use_json = cliargs.get("json")
                 results = []
                 for client in clients:
                     result = client.run_command(command, use_pty=True, read_timeout=0.1)
-                    self._exec_follow([result], address_to_host)
+                    self._exec_follow([result], address_to_host, use_json)
                     results.append(result)
-                self._summarize(results, address_to_host)
+                    results.append(result)
+                self._summarize(results, address_to_host, use_json)
             else:
                 for client in clients:
                     result = client.run_command(command)
                     self._exec_wait([result], address_to_host)
+                    results.append(result)
         else:
             client = ParallelSSHClient(list(address_to_host), user=user, gssapi_auth=True)
             if cliargs.get("follow"):
+                use_json = cliargs.get("json")
                 results = client.run_command(command, use_pty=True, read_timeout=0.1, stop_on_errors=False)
-                self._exec_follow(results, address_to_host)
+                self._exec_follow(results, address_to_host, use_json)
                 client.join(results)
-                self._summarize(results, address_to_host)
+                self._summarize(results, address_to_host, use_json)
             else:
                 results = client.run_command(command, stop_on_errors=False)
                 client.join(results)
                 self._exec_wait(results, address_to_host)
+
+            for result in results:
+                if result.exception:
+                    return 1
+                if result.exit_code != 0:
+                    return result.exit_code
+            return 0
 
     def _exec_wait(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
         for result in results:
@@ -245,7 +264,9 @@ class PsshCLI(CLI):
                 for line in stderr:
                     display.display(line, color="yellow")
 
-    def _exec_follow(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
+    def _exec_follow(
+        self, results: list[HostOutput], address_to_host: dict[str, str], use_json: bool
+    ) -> None:
         finished = []
         while results:
             for result in results:
@@ -253,13 +274,33 @@ class PsshCLI(CLI):
 
                 try:
                     for line in result.stdout:
-                        display.display(f"[{host}] {line}")
+                        if use_json:
+                            message = json.dumps(
+                                {
+                                    "host": str(host),
+                                    "output": line,
+                                    "stream": "stdout",
+                                }
+                            )
+                        else:
+                            message = f"[{host}] {line}"
+                        display.display(message)
                 except Timeout:
                     pass
 
                 try:
                     for line in result.stderr:
-                        display.display(f"[{host} error] {line}", color="yellow")
+                        if use_json:
+                            message = json.dumps(
+                                {
+                                    "host": str(host),
+                                    "output": line,
+                                    "stream": "stderr",
+                                }
+                            )
+                            display.display(message)
+                        else:
+                            display.display(f"[{host} error] {line}", color="yellow")
                 except Timeout:
                     pass
 
@@ -268,15 +309,31 @@ class PsshCLI(CLI):
 
             results = [result for result in results if result not in finished]
 
-    def _summarize(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
+    def _summarize(
+        self, results: list[HostOutput], address_to_host: dict[str, str], use_json: bool = False
+    ) -> None:
         for result in results:
             host = address_to_host[result.host]
-            if result.exception:
-                display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
-            elif result.exit_code == 0:
-                display.display(f"[SUCCESS: {host}]", color="green")
+            if use_json:
+                output = {
+                    "host": str(host),
+                    "exit_code": result.exit_code,
+                }
+                if result.exception:
+                    output["status"] = "exception"
+                    output["exception"] = f"{result.exception}"
+                elif result.exit_code == 0:
+                    output["status"] = "success"
+                else:
+                    output["status"] = "failure"
+                display.display(json.dumps(output))
             else:
-                display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
+                if result.exception:
+                    display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
+                elif result.exit_code == 0:
+                    display.display(f"[SUCCESS: {host}]", color="green")
+                else:
+                    display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
             result.client.close_channel(result.channel)
 
 
