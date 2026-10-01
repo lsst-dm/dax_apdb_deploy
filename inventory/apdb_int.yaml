@@ -18,7 +18,9 @@ apdb_int_rack1:
     sdfcasdev101:
       ansible_host: sdfcasdev101.sdf.slac.stanford.edu
       cassandra_seed: true
+      cassandra_configs_num_tokens: 2
     sdfcasdev102:
       ansible_host: sdfcasdev102.sdf.slac.stanford.edu
+      cassandra_configs_num_tokens: 2
   vars:
     node_rack: "rack-1"
