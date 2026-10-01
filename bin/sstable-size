@@ -1,0 +1,132 @@
+#!/usr/bin/bash
+#
+# Script to dump sizes of individual SSTables on each cluster node.
+#
+# The script locates *-Data.db files in Cassandra data directory for a given keyspace.
+
+
+usage() {
+    cat << EOD
+
+Usage: $0 inventory-file keyspace
+
+Available options:
+
+    -h      Display usage information.
+    -n      Show size per table and node.
+    -t      Show size per table for all nodes.
+    -H      Show size in human-readable format.
+
+EOD
+}
+
+human=0
+group_node=0
+group_table=0
+
+while getopts hntH c; do
+    case $c in
+        h) usage; exit 0 ;;
+        H) human=1 ;;
+        n) group_node=1 ;;
+        t) group_table=1 ;;
+        \?) usage >&2; exit 1 ;;
+    esac
+done
+
+shift $((OPTIND-1))
+if [ $# -ne 2 ]; then
+    usage >&2
+    exit 1
+fi
+
+inventory=$1
+keyspace=$2
+
+
+# Usage: find_data_dir inventory.yaml
+find_data_dir() {
+    test -d ./cassandra_cluster && playbook_dir="--playbook-dir=./cassandra_cluster"
+    ansible -i $1 all $playbook_dir -m debug -a "var=data_dir" |\
+        awk '/ *"data_dir":/ { print $2}' |\
+        sort -u |\
+        tr -d '"'
+}
+
+data_dir=$(find_data_dir $inventory)
+
+ansible-pssh -i $inventory -f --json "cd $data_dir/data/$keyspace; find . -maxdepth 2 -name \*-Data.db -printf '%p %s\n'" |\
+jq -r 'select(.stream == "stdout") | .host + " " + .output' |\
+gawk -v human=$human -v group_node=$group_node -v group_table=$group_table '
+    function hsize(size, w) {
+        if ( size < 1024 ) return sprintf("%*d B", w, size)
+        size /= 1024
+        if ( size < 1024 ) return sprintf("%*.2f KiB", w, size)
+        size /= 1024
+        if ( size < 1024 ) return sprintf("%*.2f MiB", w, size)
+        size /= 1024
+        if ( size < 1024 ) return sprintf("%*.2f GiB", w, size)
+        size /= 1024
+        return sprintf("%*.2f TiB", w, size)
+    }
+
+    {
+        host = $1
+        if (length(host) > host_len) host_len = length(host)
+
+        table_sstable = gensub("^[.]/([^-]+)-[0-9a-f]+/(.+)$", "\\1 \\2", "g", $2)
+        split(table_sstable, arr)
+        table = arr[1]
+        if (length(table) > table_len) table_len = length(table)
+
+        sstable = arr[2]
+        if (length(sstable) > sstable_len) sstable_len = length(sstable)
+
+        size = $3
+        data[table][host][sstable] = size
+    }
+
+    END {
+        nt = asorti(data, tables)
+        for (it = 1; it <= nt; it ++) {
+            table = tables[it]
+            nh = asorti(data[table], hosts)
+            table_size = 0
+            for (ih = 1; ih <= nh; ih ++) {
+                host = hosts[ih]
+                ns = asorti(data[table][host], sstables)
+                node_size = 0
+                for (is = 1; is <= ns; is ++) {
+                    sstable = sstables[is]
+                    size = data[table][host][sstable]
+                    node_size += size
+                    if (! group_node && ! group_table) {
+                        if (human){
+                            size = hsize(size, 10)
+                            printf "%-*s  %-*s  %-*s  %s\n", table_len, table, host_len, host, sstable_len, sstable, size
+                        } else {
+                            printf "%-*s  %-*s  %-*s  %16d\n", table_len, table, host_len, host, sstable_len, sstable, size
+                        }
+                    }
+                }
+                table_size += node_size
+                if (group_node && ! group_table) {
+                    if (human){
+                        node_size = hsize(node_size, 10)
+                        printf "%-*s  %-*s  %s\n", table_len, table, host_len, host, node_size
+                    } else {
+                        printf "%-*s  %-*s  %16d\n", table_len, table, host_len, host, node_size
+                    }
+                }
+            }
+            if (group_table) {
+                if (human){
+                    table_size = hsize(table_size, 10)
+                    printf "%-*s  %s\n", table_len, table, table_size
+                } else {
+                    printf "%-*s  %16d\n", table_len, table, table_size
+                }
+            }
+        }
+    }
+'
