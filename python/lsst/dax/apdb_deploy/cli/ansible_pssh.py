@@ -142,7 +142,7 @@ class PsshCLI(CLI):
             logging.exception("Execution failed.")
             return 1
 
-    def _run(self) -> None:
+    def _run(self) -> int:
         super().run()
 
         # Initialize needed objects
@@ -158,14 +158,14 @@ class PsshCLI(CLI):
                 raise
             else:
                 display.warning("No hosts matched, nothing to do")
-                return
+                return 0
 
         # just listing hosts?
         if cliargs["listhosts"]:
             display.display(f"  hosts ({len(hosts)}):")
             for host in hosts:
                 display.display(f"    {host}")
-            return
+            return 0
 
         if not cliargs["command"]:
             raise AnsibleError("COMMAND is required if --list-hosts is not used.")
@@ -198,7 +198,7 @@ class PsshCLI(CLI):
             command = f"cd '{deploy_docker_folder}'; {command}"
 
         user = cliargs.get("remote_user")
-        results = []
+        results: list[HostOutput] = []
         if cliargs["serial"]:
             clients = [
                 SSHClient(
@@ -210,11 +210,9 @@ class PsshCLI(CLI):
             ]
             if cliargs.get("follow"):
                 use_json = cliargs.get("json")
-                results = []
                 for client in clients:
                     result = client.run_command(command, use_pty=True, read_timeout=0.1)
                     self._exec_follow([result], address_to_host, use_json)
-                    results.append(result)
                     results.append(result)
                 self._summarize(results, address_to_host, use_json)
             else:
@@ -235,12 +233,13 @@ class PsshCLI(CLI):
                 client.join(results)
                 self._exec_wait(results, address_to_host)
 
-            for result in results:
-                if result.exception:
-                    return 1
-                if result.exit_code != 0:
-                    return result.exit_code
-            return 0
+        for result in results:
+            if result.exception:
+                return 1
+            if result.exit_code != 0:
+                return result.exit_code
+
+        return 0
 
     def _exec_wait(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
         for result in results:
