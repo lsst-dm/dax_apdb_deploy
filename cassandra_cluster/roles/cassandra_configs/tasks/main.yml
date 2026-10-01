@@ -40,13 +40,13 @@
     - name: "Process cassandra.yaml overrides"
       ansible.builtin.template:
         src: "cassandra-local.yaml.j2"
-        dest: "{{ group_local_cache }}/cassandra-local.yaml"
+        dest: "{{ group_local_cache }}/cassandra-local.yaml.j2"
         mode: "0644"
 
     - name: "Load cassandra.yaml files"
       ansible.builtin.set_fact:
         __c8_yaml_orig: "{{ lookup('file', cassandra_configs_unpacked_conf + '/cassandra.yaml') }}"
-        __c8_yaml_local: "{{ lookup('file', group_local_cache + '/cassandra-local.yaml') }}"
+        __c8_yaml_local: "{{ lookup('file', group_local_cache + '/cassandra-local.yaml.j2') }}"
 
     - name: "Merge cassandra.yaml files"
       ansible.builtin.set_fact:
