@@ -8,7 +8,7 @@
 # why "raw" is here.
 listen_address: '"{% raw %}{{ ansible_host }}{% endraw %}"'
 
-num_tokens: {{ cassandra_configs_num_tokens }}
+num_tokens: "{% raw %}{{ cassandra_configs_num_tokens }}{% endraw %}"
 
 authenticator: {{ "PasswordAuthenticator" if use_password else "AllowAllAuthenticator" }}
 authorizer: {{ "CassandraAuthorizer" if use_password else "AllowAllAuthorizer" }}
@@ -65,8 +65,8 @@ slow_query_log_timeout: 60s
 
 "disk_access_mode": mmap_index_only
 
-# Secret undocumented parameter, it may be missing in orginal, "!" will add it.
-# This needs to be at least as high as other request tmeouts.
+# Secret undocumented parameter, it may be missing in original, "!" will add it.
+# This needs to be at least as high as other request timeouts.
 "!native_transport_timeout": 120s
 
 native_transport_max_threads: 200
@@ -76,3 +76,14 @@ native_transport_max_auth_threads: 0
 max_hint_window: 24h
 max_hints_delivery_threads: 8
 hinted_handoff_throttle: 10240KiB
+
+# Upgrade from 4.x to 5.0 will start with
+#     storage_compatibility_mode: CASSANDRA_4
+# then
+#     storage_compatibility_mode: UPGRADING
+# and then switching to NONE
+storage_compatibility_mode: NONE
+
+# This can only be set after upgrade and `storage_compatibility_mode: NONE`
+sstable:
+  selected_format: bti
