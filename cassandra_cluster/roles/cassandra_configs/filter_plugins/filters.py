@@ -54,7 +54,7 @@ class FilterModule:
             if key.startswith("!"):
                 add_if_missing = True
                 key = key.lstrip("!")
-            key_re = re.compile(f"^(# +)?{key} *:.*$")
+            key_re = re.compile(f"^(# *)?{key} *:.*$")
             updated_lines = []
             found = False
             for line in lines:
