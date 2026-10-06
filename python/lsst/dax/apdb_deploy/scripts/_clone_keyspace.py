@@ -457,8 +457,8 @@ async def _load_keyspace(
     exceptions = []
     with _make_cluster(hosts, port, username, password) as cluster:
         with cluster.connect() as session:
-            query = "SELECT keyspace_name FROM system_schema.keyspaces where keyspace_name ='%s'"
-            result = session.execute(query, (keyspace,))
+            query = f"SELECT keyspace_name FROM system_schema.keyspaces where keyspace_name ='{keyspace}'"
+            result = session.execute(query)
             if len(list(result)) == 0:
                 raise LookupError(
                     f"Keyspace {keyspace!r} does not exist in destination cluster, "
