@@ -1,14 +1,14 @@
 ---
-cluster_name: "APDB USDF test"
+cluster_name: "USDF APDB Production Cluster"
 cluster_unique_id: "apdb_prod"
 deploy_folder: "/sdf/home/r/rubincas/apdb_deploy"
-data_dir: "/zfspool/cassandra/test-apdb-cluster"
+data_dir: "/zfspool/cassandra/apdb-cluster-prod"
 logs_dir: "/zfspool/cassandra/logs"
-cassandra_configs_num_tokens: 16
+cassandra_configs_num_tokens: 4
 
 use_password: true
 make_credentials_source: "hashi_vault"
-hashi_vault_user_path: "rubin/usdf-apdb-prod/apdb-prod"
+hashi_vault_user_path: "rubin/usdf-apdb-prod/cassandra"
 hashi_vault_super_path: "rubin/usdf-apdb-prod/cassandra-super"
 
 use_backups: true
