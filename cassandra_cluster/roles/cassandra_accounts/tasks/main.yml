@@ -51,20 +51,20 @@
         make_credentials_var: user_credentials
 
     - name: "Create new superuser account"
-      no_log: true
+      no_log: false
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "CREATE ROLE {{ super_credentials.username }} WITH PASSWORD = '{{ super_credentials.password }}' AND LOGIN = true AND SUPERUSER = true"
+        execute: "CREATE ROLE \"{{ super_credentials.username }}\" WITH PASSWORD = '{{ super_credentials.password }}' AND LOGIN = true AND SUPERUSER = true"
         username: cassandra
         password: cassandra
       register: cassandra_accounts_cqlsh_result
       failed_when: cassandra_accounts_cqlsh_result.failed
 
     - name: "Create regular user account"
-      no_log: true
+      no_log: false
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "CREATE ROLE {{ user_credentials.username }} WITH PASSWORD = '{{ user_credentials.password }}' AND LOGIN = true AND SUPERUSER = false"
+        execute: "CREATE ROLE '{{ user_credentials.username }}' WITH PASSWORD = '{{ user_credentials.password }}' AND LOGIN = true AND SUPERUSER = false"
         username: cassandra
         password: cassandra
       register: cassandra_accounts_cqlsh_result
@@ -74,7 +74,7 @@
       no_log: true
       community.cassandra.cassandra_cqlsh:
         cqlsh_cmd: "{{ deploy_docker_folder }}/cqlsh"
-        execute: "GRANT CREATE ON ALL KEYSPACES TO {{ user_credentials.username }}"
+        execute: "GRANT CREATE ON ALL KEYSPACES TO \"{{ user_credentials.username }}\""
         username: cassandra
         password: cassandra
       register: cassandra_accounts_cqlsh_result
