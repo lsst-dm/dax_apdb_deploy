@@ -31,11 +31,10 @@ from ansible import context
 from ansible.cli import CLI
 from ansible.cli.arguments import option_helpers
 from ansible.errors import AnsibleError
-from ansible.template import Templar
 from ansible.utils.display import Display
 
 from ..pssh import Pssh
-from .utils import locate_basedir
+from .utils import find_docker_folder, locate_basedir, make_host_map, make_hosts
 
 _log_format = "%(levelname)s: %(name)s - %(message)s"
 
@@ -147,14 +146,10 @@ class PsshCLI(Pssh, CLI):
         cliargs = context.CLIARGS
 
         # get list of hosts to execute against
-        try:
-            hosts = list(self.get_host_list(inventory, cliargs["subset"]))
-        except AnsibleError:
-            if cliargs["subset"]:
-                raise
-            else:
-                self.display.warning("No hosts matched, nothing to do")
-                return 0
+        hosts = make_hosts(inventory, cliargs["subset"])
+        if not hosts:
+            self.display.warning("No hosts matched, nothing to do")
+            return 0
 
         # just listing hosts?
         if cliargs["listhosts"]:
@@ -173,24 +168,11 @@ class PsshCLI(Pssh, CLI):
             del hosts[1:]
 
         # Find addresses for all hosts.
-        host_to_address = {}
-        deploy_docker_folders: set[str] = set()
-        for host in hosts:
-            host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
-            host_to_address[host] = host_var["ansible_host"]
+        host_to_address = make_host_map(hosts, vm)
 
-            if cliargs["chdir_to_docker"]:
-                if deploy_docker_folder := host_var.get("deploy_docker_folder"):
-                    templar = Templar(loader, host_var)
-                    deploy_docker_folders.add(templar.template(deploy_docker_folder))
-
-        deploy_docker_folder = None
+        deploy_docker_folder: str | None = None
         if cliargs["chdir_to_docker"]:
-            if not deploy_docker_folders:
-                raise AnsibleError("deploy_docker_folder is unknown, use --playbook-dir to specify basedir.")
-            if len(deploy_docker_folders) > 1:
-                raise AnsibleError("Multiple deploy_docker_folder values, cannot proceed.")
-            deploy_docker_folder = deploy_docker_folders.pop()
+            deploy_docker_folder = find_docker_folder(hosts, vm, loader)
 
         rc = self.execute(
             hosts=host_to_address,

@@ -10,4 +10,4 @@ cd "$docker_dir"
 
 # Pass JVM_OPTS, this is frequently needed with sstable* applications.
 JVM_OPTS=-Dcassandra.allow_unlimited_concurrent_validations=true
-exec docker compose run --quiet --rm $service bash -c "JVM_OPTS=$JVM_OPTS $*"
+exec docker compose run --quiet --rm --env JVM_OPTS=$JVM_OPTS $service "$@"

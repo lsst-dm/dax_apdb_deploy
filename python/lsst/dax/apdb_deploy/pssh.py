@@ -21,12 +21,15 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 
 from pssh.clients.ssh import ParallelSSHClient, SSHClient
 from pssh.exceptions import Timeout
 from pssh.output import HostOutput
+
+_LOG = logging.getLogger(__name__)
 
 
 class Pssh(ABC):
@@ -131,19 +134,23 @@ class Pssh(ABC):
             for result in results:
                 host = address_to_host[result.host]
 
-                stdout = stderr = []
+                stdout = []
+                stderr = []
 
                 try:
-                    stdout = list(result.stdout)
+                    for line in result.stdout:
+                        stdout.append(line)
                 except Timeout:
-                    pass
+                    _LOG.debug("Timeout reading stdout")
 
                 try:
-                    stderr = list(result.stderr)
+                    for line in result.stderr:
+                        stderr.append(line)
                 except Timeout:
-                    pass
+                    _LOG.debug("Timeout reading stderr")
 
-                self.process_output(host, stdout, stderr)
+                if stdout or stderr:
+                    self.process_output(host, stdout, stderr)
 
                 if result.exception or result.exit_code is not None:
                     finished.append(result)
@@ -156,7 +163,6 @@ class Pssh(ABC):
             self.process_exit(host, result.exit_code, result.exception)
             result.client.close_channel(result.channel)
 
-    @abstractmethod
     def process_full(
         self,
         host: str,
@@ -185,7 +191,8 @@ class Pssh(ABC):
         -----
         This method is called when ``follow`` is `False`.
         """
-        raise NotImplementedError()
+        self.process_output(host, stdout, stderr)
+        self.process_exit(host, exit_code, exception)
 
     @abstractmethod
     def process_output(self, host: str, stdout: list[str], stderr: list[str]) -> None:

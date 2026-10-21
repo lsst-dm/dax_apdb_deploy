@@ -32,6 +32,7 @@ dependencies = [
     "grpcio-health-checking",
     "parallel-ssh",
     "lsst-resources",
+    "rich",
 ]
 
 dynamic = ["version"]
@@ -154,6 +155,7 @@ checks = [
     "RT01",  # Unfortunately our @property trigger this.
     "RT02",  # Does not want named return value. DM style says we do.
     "SS05",  # pydocstyle is better at finding infinitive verb.
+    "PR04",  # Allow parameters without types.
 ]
 exclude = [
     "^test_.*",  # Do not test docstrings in test code.
