@@ -12,3 +12,5 @@ hashi_vault_user_path: "rubin/usdf-apdb-test/cassandra"
 hashi_vault_super_path: "rubin/usdf-apdb-test/cassandra-super"
 
 use_backups: true
+
+cassandra_version: 5.0.8
