@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Run arbitrary commands inside Cassandra container.
+#
+
+docker_dir="{{ deploy_docker_folder }}"
+service="{{ service_name }}"
+
+cd "$docker_dir"
+
+# Pass JVM_OPTS, this is frequently needed with sstable* applications.
+JVM_OPTS=-Dcassandra.allow_unlimited_concurrent_validations=true
+exec docker compose run --quiet --rm --env JVM_OPTS=$JVM_OPTS $service "$@"

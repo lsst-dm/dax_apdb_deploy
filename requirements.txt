@@ -8,3 +8,4 @@ grpcio
 grpcio-health-checking
 parallel-ssh
 lsst-resources
+rich

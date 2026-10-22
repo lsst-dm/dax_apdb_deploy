@@ -46,6 +46,7 @@
   loop:
     - "cqlsh"
     - "nodetool"
+    - "cmd"
 
 - name: "Pull docker images"
   community.docker.docker_compose_v2_pull:

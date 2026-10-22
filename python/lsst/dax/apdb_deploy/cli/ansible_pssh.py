@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import random
 
@@ -30,30 +31,25 @@ from ansible import context
 from ansible.cli import CLI
 from ansible.cli.arguments import option_helpers
 from ansible.errors import AnsibleError
-from ansible.template import Templar
 from ansible.utils.display import Display
-from pssh.clients.ssh import ParallelSSHClient, SSHClient
-from pssh.exceptions import Timeout
-from pssh.output import HostOutput
 
-from .utils import locate_basedir
+from ..pssh import Pssh
+from .utils import find_docker_folder, locate_basedir, make_host_map, make_hosts
 
 _log_format = "%(levelname)s: %(name)s - %(message)s"
 
 logging.basicConfig(level=logging.WARNING, format=_log_format)
 
-display = Display()
 
-
-class PsshCLI(CLI):
+class PsshCLI(Pssh, CLI):
     """CLI for running parallel-ssh on remote hosts."""
+
+    display = Display()
 
     name = "ansible-pssh"
 
-    def init_parser(self) -> None:
-        super().init_parser(
-            desc="Execute command on each host in inventory.",
-        )
+    def init_parser(self, desc: str | None = None, epilog: str | None = None) -> None:
+        super().init_parser(desc=desc or "Execute command on each host in inventory.", epilog=epilog)
 
         option_helpers.add_inventory_options(self.parser)
         option_helpers.add_vault_options(self.parser)
@@ -101,6 +97,12 @@ class PsshCLI(CLI):
             action="store_true",
             help="Print output without waiting for command completion.",
         )
+        self.parser.add_argument(
+            "--json",
+            default=False,
+            action="store_true",
+            help="Print results of execution in json line format.",
+        )
         self.parser.add_argument("command", help="Shell command to execute on remote hosts.", nargs="?")
 
     def post_process_args(self, options: argparse.Namespace) -> argparse.Namespace:
@@ -127,15 +129,15 @@ class PsshCLI(CLI):
 
     def run(self) -> int:
         try:
-            self._run()
-            return 0
+            rc = self._run()
+            return rc
         except SystemExit:
             raise
         except BaseException:
             logging.exception("Execution failed.")
             return 1
 
-    def _run(self) -> None:
+    def _run(self) -> int:
         super().run()
 
         # Initialize needed objects
@@ -144,21 +146,17 @@ class PsshCLI(CLI):
         cliargs = context.CLIARGS
 
         # get list of hosts to execute against
-        try:
-            hosts = list(self.get_host_list(inventory, cliargs["subset"]))
-        except AnsibleError:
-            if cliargs["subset"]:
-                raise
-            else:
-                display.warning("No hosts matched, nothing to do")
-                return
+        hosts = make_hosts(inventory, cliargs["subset"])
+        if not hosts:
+            self.display.warning("No hosts matched, nothing to do")
+            return 0
 
         # just listing hosts?
         if cliargs["listhosts"]:
-            display.display(f"  hosts ({len(hosts)}):")
+            self.display.display(f"  hosts ({len(hosts)}):")
             for host in hosts:
-                display.display(f"    {host}")
-            return
+                self.display.display(f"    {host}")
+            return 0
 
         if not cliargs["command"]:
             raise AnsibleError("COMMAND is required if --list-hosts is not used.")
@@ -170,113 +168,107 @@ class PsshCLI(CLI):
             del hosts[1:]
 
         # Find addresses for all hosts.
-        address_to_host = {}
-        deploy_docker_folders: set[str] = set()
-        for host in hosts:
-            host_var = vm.get_vars(host=host, include_hostvars=False, stage="all")
-            address_to_host[host_var["ansible_host"]] = host
+        host_to_address = make_host_map(hosts, vm)
 
-            if cliargs["chdir_to_docker"]:
-                if deploy_docker_folder := host_var.get("deploy_docker_folder"):
-                    templar = Templar(loader, host_var)
-                    deploy_docker_folders.add(templar.template(deploy_docker_folder))
-
-        command = cliargs["command"]
+        deploy_docker_folder: str | None = None
         if cliargs["chdir_to_docker"]:
-            if not deploy_docker_folders:
-                raise AnsibleError("deploy_docker_folder is unknown, use --playbook-dir to specify basedir.")
-            if len(deploy_docker_folders) > 1:
-                raise AnsibleError("Multiple deploy_docker_folder values, cannot proceed.")
-            deploy_docker_folder = deploy_docker_folders.pop()
-            command = f"cd '{deploy_docker_folder}'; {command}"
+            deploy_docker_folder = find_docker_folder(hosts, vm, loader)
 
-        user = cliargs.get("remote_user")
-        if cliargs["serial"]:
-            clients = [
-                SSHClient(
-                    host_address,
-                    user=user,
-                    gssapi_auth=True,
-                )
-                for host_address in address_to_host
-            ]
-            if cliargs.get("follow"):
-                results = []
-                for client in clients:
-                    result = client.run_command(command, use_pty=True, read_timeout=0.1)
-                    self._exec_follow([result], address_to_host)
-                    results.append(result)
-                self._summarize(results, address_to_host)
+        rc = self.execute(
+            hosts=host_to_address,
+            cmd=cliargs["command"],
+            user=cliargs.get("remote_user"),
+            cd_folder=deploy_docker_folder,
+            serial=cliargs["serial"],
+            follow=cliargs.get("follow"),
+        )
+
+        return rc
+
+    def process_full(
+        self,
+        host: str,
+        stdout: list[str],
+        stderr: list[str],
+        exit_code: int | None,
+        exception: Exception | None,
+    ) -> None:
+        use_json = context.CLIARGS.get("json")
+        if use_json:
+            output = {
+                "host": str(host),
+                "exit_code": exit_code,
+                "stdout": "\n".join(stdout),
+                "stderr": "\n".join(stderr),
+            }
+            if exception:
+                output["exception"] = str(exception)
+                output["status"] = "exception"
+            elif exit_code == 0:
+                output["status"] = "success"
             else:
-                for client in clients:
-                    result = client.run_command(command)
-                    self._exec_wait([result], address_to_host)
+                output["status"] = "failure"
+            self.display.display(json.dumps(output))
         else:
-            client = ParallelSSHClient(list(address_to_host), user=user, gssapi_auth=True)
-            if cliargs.get("follow"):
-                results = client.run_command(command, use_pty=True, read_timeout=0.1, stop_on_errors=False)
-                self._exec_follow(results, address_to_host)
-                self._summarize(results, address_to_host)
-                client.join(results)
-            else:
-                results = client.run_command(command, stop_on_errors=False)
-                self._exec_wait(results, address_to_host)
-
-    def _exec_wait(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
-        for result in results:
-            host = address_to_host[result.host]
-
-            # Have to read full output before asking for exit code.
-            stdout = list(result.stdout) if result.stdout is not None else []
-            stderr = list(result.stderr) if result.stderr is not None else []
-
-            if result.exception:
-                display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
-            elif result.exit_code == 0:
-                display.display(f"[SUCCESS: {host}]", color="green")
-            else:
-                display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
+            self.process_exit(host, exit_code, exception)
 
             for line in stdout:
-                display.display(line)
+                self.display.display(line)
             if stderr:
-                display.display("[error output]", color="yellow")
+                self.display.display("[error output]", color="yellow")
                 for line in stderr:
-                    display.display(line, color="yellow")
+                    self.display.display(line, color="yellow")
 
-    def _exec_follow(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
-        finished = []
-        while results:
-            for result in results:
-                host = address_to_host[result.host]
-
-                try:
-                    for line in result.stdout:
-                        display.display(f"[{host}] {line}")
-                except Timeout:
-                    pass
-
-                try:
-                    for line in result.stderr:
-                        display.display(f"[{host} error] {line}", color="yellow")
-                except Timeout:
-                    pass
-
-                if result.exit_code is not None:
-                    finished.append(result)
-
-            results = [result for result in results if result not in finished]
-
-    def _summarize(self, results: list[HostOutput], address_to_host: dict[str, str]) -> None:
-        for result in results:
-            host = address_to_host[result.host]
-            if result.exception:
-                display.display(f"[EXCEPTION: {host} - {result.exception}]", color="red")
-            elif result.exit_code == 0:
-                display.display(f"[SUCCESS: {host}]", color="green")
+    def process_output(self, host: str, stdout: list[str], stderr: list[str]) -> None:
+        use_json = context.CLIARGS.get("json")
+        for line in stdout:
+            if use_json:
+                message = json.dumps(
+                    {
+                        "host": str(host),
+                        "output": line,
+                        "stream": "stdout",
+                    }
+                )
             else:
-                display.display(f"[FAILURE: {host} (code={result.exit_code})]", color="red")
-            result.client.close_channel(result.channel)
+                message = f"[{host}] {line}"
+            self.display.display(message)
+
+        for line in stderr:
+            if use_json:
+                message = json.dumps(
+                    {
+                        "host": str(host),
+                        "output": line,
+                        "stream": "stderr",
+                    }
+                )
+                self.display.display(message)
+            else:
+                self.display.display(f"[{host} error] {line}", color="yellow")
+
+    def process_exit(self, host: str, exit_code: int | None, exception: Exception | None) -> None:
+        use_json = context.CLIARGS.get("json")
+        if use_json:
+            output = {
+                "host": str(host),
+                "exit_code": exit_code,
+            }
+            if exception:
+                output["status"] = "exception"
+                output["exception"] = f"{exception}"
+            elif exit_code == 0:
+                output["status"] = "success"
+            else:
+                output["status"] = "failure"
+            self.display.display(json.dumps(output))
+        else:
+            if exception:
+                self.display.display(f"[EXCEPTION: {host} - {exception}]", color="red")
+            elif exit_code == 0:
+                self.display.display(f"[SUCCESS: {host}]", color="green")
+            else:
+                self.display.display(f"[FAILURE: {host} (code={exit_code})]", color="red")
 
 
 def main(args: list[str] | None = None) -> None:

@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #
-# Script to caclulate keyspace size.
+# Script to calculate keyspace size.
 #
 # The script executes `nodetool tablestats` on each node and sums all numbers.
 
@@ -15,7 +15,7 @@ Available options:
     -h      Display usage information.
     -u      Report uncompressed size of data.
     -H      Show size in human-readable format.
-H
+
 EOD
 }
 
@@ -55,6 +55,7 @@ gawk -v uncomp=$uncompressed -v human=$human '
 
 
     /^Keyspace : / { ks = $3; keyspaces[ks] = ks; }
+    /^Keyspace: / { ks = $2; keyspaces[ks] = ks; }
     /^\s*Table: / { t = $2 }
     /Space used .total.: / {
         s = $4
